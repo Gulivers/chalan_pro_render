@@ -1,7 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.db.models import UniqueConstraint
+from django.db.models.functions import Lower
 from ctrctsapp.utils import geocode_address
+from appinventory.models import PriceType
 
 # Modelo de Builder.
 class Builder(models.Model):
@@ -9,12 +12,56 @@ class Builder(models.Model):
     trim_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Trim Price SqFt', default=0)
     rough_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Rough Price SqFt', default=0)
     travel_price_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Travel Amount', default=0) 
-    # Otros campos relevantes del builder
+    party = models.ForeignKey('apptransactions.Party',on_delete=models.PROTECT, related_name='builders', null=True, blank=True)
+    # Campos adicionales de Party
+    rfc = models.CharField(max_length=50, blank=True, verbose_name='RFC')
+    street = models.CharField(max_length=100, blank=True, verbose_name='Street')
+    floor_office = models.CharField(max_length=100, blank=True, verbose_name='Floor/Office')
+    city = models.CharField(max_length=100, blank=True, verbose_name='City')
+    state = models.CharField(max_length=100, blank=True, verbose_name='State')
+    zipcode = models.CharField(max_length=20, blank=True, verbose_name='Zip Code')
+    country = models.CharField(max_length=100, blank=True, verbose_name='Country')
+    phone = models.CharField(max_length=20, blank=True, verbose_name='Phone')
+    email = models.EmailField(blank=True, verbose_name='Email')
+    # Campos adicionales de Party
+    types = models.ManyToManyField('apptransactions.PartyType', blank=True, verbose_name='Party Types')
+    category = models.ForeignKey('apptransactions.PartyCategory', on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Category')
+    default_price_type = models.ForeignKey(PriceType, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Default Price Type')
+    customer_rank = models.PositiveIntegerField(default=0, verbose_name='Customer Rank')
+    supplier_rank = models.PositiveIntegerField(default=0, verbose_name='Supplier Rank')
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = 'Builder'
         verbose_name_plural = 'Builders'
         ordering = ['name']
+        constraints = [
+            # Evitar duplicar nombre de builder por Party (case-insensitive). Ajusta si no quieres esta regla.
+            UniqueConstraint(
+                Lower('name'), 'party',
+                name='uniq_builder_name_party_ci'
+            ),
+            # Evitar duplicar nombre de builder (case-insensitive)
+            UniqueConstraint(
+                Lower('name'),
+                name='uniq_builder_name_ci'
+            ),
+            # Evitar duplicar RFC
+            UniqueConstraint(
+                'rfc',
+                name='uniq_builder_rfc',
+                condition=models.Q(rfc__isnull=False) & models.Q(rfc__gt='')
+            )
+        ]
+
+    def is_customer(self):
+        return self.customer_rank > 0
+
+    def is_supplier(self):
+        return self.supplier_rank > 0
+
+    def is_both(self):
+        return self.customer_rank > 0 and self.supplier_rank > 0
 
     def __str__(self):
         return self.name

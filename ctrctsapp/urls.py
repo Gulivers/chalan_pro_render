@@ -8,6 +8,7 @@ from .views import (
     UserDetailView, get_house_model_jobs, geocode_view, download_contract_pdf,
     BuilderReadOnlyViewSet, JobReadOnlyViewSet, HouseReadOnlyViewSet
 )
+from .views_schema import BuilderSchemaView, JobSchemaView, HouseModelSchemaView
 
 router = DefaultRouter()
 router.register('contract', ContractViewSet, basename='contract')
@@ -40,5 +41,10 @@ urlpatterns = [
     path('web/contract-pdf/<int:contract_id>', download_contract_pdf, name='contract-pdf'),
     path('api/builder/<int:pk>/workprices/', BuilderViewSet.as_view({'get': 'workprices'}), name='builder-workprices'),
     path('api/builder/<int:pk>/assign-workprices/', BuilderViewSet.as_view({'post': 'assign_workprices'}), name='assign-workprices'),
+    
+    # Schema endpoints
+    path('api/schema/builder/', BuilderSchemaView.as_view(), name='builder-schema'),
+    path('api/schema/job/', JobSchemaView.as_view(), name='job-schema'),
+    path('api/schema/house-model/', HouseModelSchemaView.as_view(), name='house-model-schema'),
 
 ] + router.urls

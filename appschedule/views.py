@@ -13,7 +13,8 @@ from django.db.models import (
     Q, Count, OuterRef, Subquery, DateTimeField, ExpressionWrapper, F, 
     Value, IntegerField 
 )  
-from django.db import connection                 # OAHP
+from django.db import connection, transaction                 # OAHP 9/2/2025 fixed validation error
+from django.forms.models import model_to_dict                 # OAHP 9/2/2025 fixed validation error
 from django.db.models.functions import TruncWeek, Coalesce  # OAHP <-
 from appschedule.models import Event, EventChatMessage, EventChatReadStatus             # OAHP
 from django.utils import timezone
@@ -54,6 +55,10 @@ from openpyxl.styles import Font, Border, Side, Alignment, PatternFill, PatternF
 # Image
 from rest_framework.parsers import MultiPartParser, FormParser
 
+import logging
+
+logger = logging.getLogger("appschedule")
+
 class EventViewSet(viewsets.ModelViewSet):
     """ Event ViewSet """
     queryset = EventDraft.objects.all()
@@ -72,25 +77,53 @@ class EventViewSet(viewsets.ModelViewSet):
         # if self.action == 'events_public':
         #     return Event.objects.select_related('crew').all()
         return EventDraft.objects.select_related('crew').all()
+    
+    # OAHO 9/2/2025 idempotencia + locking + transacciones
+    def _event_concrete_fields(self):
+        # campos concretos del modelo Event para mapear defaults
+        return {f.name for f in Event._meta.get_fields() if getattr(f, "concrete", False)}
+
+    def _draft_to_defaults(self, draft):
+        excluded = {'event', 'updated_at', 'created_at', 'pk', 'id'}
+        event_fields = self._event_concrete_fields()
+        defaults = {}
+        for f in EventDraft._meta.get_fields():
+            if getattr(f, 'concrete', False) and f.name not in excluded and f.name in event_fields:
+                defaults[f.name] = getattr(draft, f.name)
+        return defaults
 
     def _publish_draft(self, draft):
-        # print('draft.event_id:: ', draft.event)
-        if draft.event_id is not None:
-            event = Event.objects.get(id=draft.event_id)
-            # print('draft.__dict__:: ', event.__dict__)
+        """
+        Publica un draft en modo idempotente:
+        - Si hay draft.event_id => update_or_create por ID
+        - Si no hay => usa clave natural (crew, date, title) para evitar duplicados
+          (Se puede ajustar con lot/address/category, etc.)
+        """
+        defaults = self._draft_to_defaults(draft)
+
+        if draft.event_id:
+            event, _created = Event.objects.update_or_create(
+                id=draft.event_id,
+                defaults=defaults
+            )
         else:
-            event = Event()
-        excluded_fields = ['event', 'updated_at', 'created_at', 'pk', 'id']
-        for field in EventDraft._meta.get_fields():
-            if field.concrete and field.name not in excluded_fields:
-                try:
-                    setattr(event, field.name, getattr(draft, field.name))
-                except AttributeError:
-                    # Handle cases where the Event model might not have the exact same field
-                    print(f"Warning: Event model does not have field '{field.name}'")
-        event.save()
+            # Clave natural mínima (ajústala si tienes otra combinación estable)
+            natural_key = dict(
+                crew=draft.crew,
+                date=draft.date,
+                title=draft.title
+            )
+            event, _created = Event.objects.update_or_create(
+                **natural_key,
+                defaults=defaults
+            )
+
+        logger.info("_publish_draft event_id=%s created=%s draft_id=%s crew=%s date=%s title=%s",
+                    event.id, _created, draft.id, draft.crew.name if draft.crew else None, 
+                    draft.date, draft.title)
+
         draft.delete()
-        print('order published: ')
+        return event
 
     def create(self, request, *args, **kwargs):
         to_publish = request.data.pop('_post', False)
@@ -142,30 +175,41 @@ class EventViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def publish_drafts(self, request):
         """
-        Publica los eventos draft dentro del rango de fechas proporcionado.
-        Recibe 'start_date' y 'end_date' en el cuerpo de la petición POST.
+        Publica los drafts en el rango [start_date, end_date).
+        Idempotente + locked para evitar carreras y duplicados.
         """
         start_date_str = request.data.get('start_date')
         end_date_str = request.data.get('end_date')
-
         if not start_date_str or not end_date_str:
-            return Response({'error': 'Start and end dates must be provided.'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
+            return Response(
+                {'error': 'Start and end dates must be provided.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         try:
             start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d').date()
         except ValueError:
-            return Response({'error': 'The date format must be YYYY-MM-DD.'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': 'The date format must be YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        events_to_publish = EventDraft.objects.filter(
-            date__gte=start_date,
-            end_dt__lt=end_date
-        )
-        for event in events_to_publish:
-            self._publish_draft(event)
-        return Response({}, status=status.HTTP_200_OK)
+        logger.info("publish_drafts user=%s range=[%s,%s) count_before=%s",
+                    request.user.id, start_date_str, end_date_str,
+                    EventDraft.objects.filter(date__gte=start_date, end_dt__lt=end_date).count())
+
+        published = 0
+        with transaction.atomic():
+            # Lock de fila para evitar doble publicación concurrente
+            qs = (EventDraft.objects
+                  .select_for_update(skip_locked=True)
+                  .filter(date__gte=start_date, end_dt__lt=end_date))
+
+            for draft in qs:
+                self._publish_draft(draft)
+                published += 1
+
+        return Response({'published': published}, status=status.HTTP_200_OK)
 
 
 class EventsListView(APIView):

@@ -1,12 +1,17 @@
 from datetime import timedelta
 from django.db.models import Q
 from django.contrib.auth.models import User
+from django.db import IntegrityError            # oahp
+import logging                                  # oahp
 from rest_framework import serializers
-from rest_framework.validators import ValidationError
+from rest_framework.exceptions import ValidationError           # oahp
+from rest_framework.validators import ValidationError, UniqueTogetherValidator  # oahp
 from .models import (
     Event, EventDraft, EventNote, EventChatMessage, 
     AbsenceReason,EventImage 
 )
+
+logger = logging.getLogger("appschedule") 
 
 class EventSerializer(serializers.ModelSerializer):
     """Serializer for events objects"""
@@ -30,8 +35,43 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = '__all__'
         extra_fields = ['crew_title', 'crew_category', 'images']
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Event.objects.all(),
+                fields=['crew', 'date', 'title'],
+                message='Duplicate (crew, date, title) not allowed.'
+            )
+        ]
 
+    #  atrapa Integridad en create/update y loggea
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except IntegrityError as e:
+            logger.warning(
+                "integrity_error_event_create crew=%s date=%s title=%s err=%s",
+                validated_data.get('crew'),
+                validated_data.get('date'),
+                validated_data.get('title'),
+                e
+            )
+            raise ValidationError({'non_field_errors': ['Duplicate (crew, date, title) not allowed.']})
 
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except IntegrityError as e:
+            logger.warning(
+                "integrity_error_event_update id=%s crew=%s date=%s title=%s err=%s",
+                getattr(instance, 'id', None),
+                validated_data.get('crew', getattr(instance, 'crew', None)),
+                validated_data.get('date', getattr(instance, 'date', None)),
+                validated_data.get('title', getattr(instance, 'title', None)),
+                e
+            )
+            raise ValidationError({'non_field_errors': ['Duplicate (crew, date, title) not allowed.']})
+        
+        
 class EventDraftSerializer(serializers.ModelSerializer):
     """Serializer for events draft objects"""
 

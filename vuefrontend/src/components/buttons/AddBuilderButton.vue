@@ -5,8 +5,8 @@
       type="button"
       @click="openBuilderModal"
       :disabled="isDisabled"
-    >
-      <img src="@assets/img/icon-addlink.svg" alt="Add" width="15" height="15">
+      v-tt="'Add a new party to the system.'">
+      <img src="@assets/img/icon-addlink.svg" alt="Add" width="15" height="15" />
     </button>
 
     <BuilderModal
@@ -14,74 +14,45 @@
       :action="action"
       :builder="builderData"
       @saved="handleSaved"
-      @close="closeModal"
-      @clearBuilderSelect="clearBuilderSelection"
-    />
+      @close="closeModal" />
   </div>
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from 'vue'
-import BuilderModal from '@/components/contracts/BuilderModalComponent.vue'
-import axios from 'axios'
+  import { ref, defineProps, defineEmits } from 'vue';
+  import BuilderModal from '@/components/contracts/BuilderModalComponent.vue';
+  import axios from 'axios';
 
-const props = defineProps({
-  isDisabled: {
-    type: Boolean,
-    default: false
+  const props = defineProps({
+    isDisabled: {
+      type: Boolean,
+      default: false,
+    },
+  });
+
+  const emit = defineEmits(['builder-added']);
+
+  const action = ref('add');
+  const builderData = ref(null); // DynamicForm maneja los datos internamente
+
+  const builderModal = ref(null);
+
+  function openBuilderModal() {
+    action.value = 'add';
+    builderData.value = null; // DynamicForm inicializa los datos
+    builderModal.value?.showModal();
   }
-})
 
-const emit = defineEmits(['builder-added'])
-
-const action = ref('add')
-const builderData = ref({
-  name: '',
-  trim_amount: 0,
-  rough_amount: 0,
-  travel_price_amount: 0
-})
-
-const builderModal = ref(null)
-
-function openBuilderModal() {
-  action.value = 'add'
-  builderData.value = {
-    name: '',
-    trim_amount: 0,
-    rough_amount: 0,
-    travel_price_amount: 0
+  function closeModal() {
+    builderModal.value?.hideModal();
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
   }
-  builderModal.value?.showModal()
-}
 
-function closeModal() {
-  builderModal.value?.hideModal()
-  document.querySelectorAll('.modal-backdrop').forEach(el => el.remove())
-}
-
-function clearBuilderSelection() {
-  // Este evento puede ser escuchado externamente si se requiere.
-  emit('clear-builder-select')
-}
-
-function handleSaved() {
-  axios.get('/api/builder/')
-    .then(response => {
-      const builderList = response.data;
-
-      // Encuentra el último builder añadido comparando IDs
-      const newestBuilder = builderList.reduce((latest, b) =>
-        !latest || b.id > latest.id ? b : latest, null
-      );
-
-      emit('builder-added', {
-        builder: newestBuilder,
-        list: builderList
-      });
-    })
-    .catch(error => {
-      console.error('Error reloading builders:', error);
+  function handleSaved(savedBuilder) {
+    // El DynamicForm ya nos pasa el builder guardado
+    emit('builder-added', {
+      builder: savedBuilder,
+      list: null, // Se puede recargar externamente si es necesario
     });
-}
+  }
 </script>

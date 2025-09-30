@@ -3,7 +3,7 @@
     <!-- Header del card -->
     <template #header>
       <div class="d-flex justify-content-between align-items-center w-100">
-        <h6 class="text-primary mb-0">Product Categories</h6>
+        <h6 class="text-primary mb-0">Transaction Types</h6>
         <router-link to="/document-types/form" class="btn btn-success">+ New Transaction Type</router-link>
       </div>
     </template>
@@ -27,7 +27,7 @@
 
           <!-- wrapper relativo -->
           <div class="search-wrapper flex-grow-1">
-            <input v-model="search" type="text" class="form-control" placeholder="Search..." autocomplete="off" />
+            <input v-model="search" type="text" class="form-control" placeholder="Search by Title or Description" autocomplete="off" />
             <!-- Botón X flotante -->
             <button
               v-show="search && search.length"
@@ -88,6 +88,24 @@
         </td>
       </template>
 
+      <!-- Is Operational -->
+      <template #cell(is_operational)="data">
+        <td class="sorting_1 text-center">
+          <span :class="data.item.is_operational ? 'badge bg-info' : 'badge bg-secondary'">
+            {{ data.item.is_operational ? 'Yes' : 'No' }}
+          </span>
+        </td>
+      </template>
+
+      <!-- Allow Negative Sales -->
+      <template #cell(allow_negative_sales)="data">
+        <td class="sorting_1 text-center">
+          <span :class="data.item.allow_negative_sales ? 'badge bg-warning' : 'badge bg-secondary'">
+            {{ data.item.allow_negative_sales ? 'Yes' : 'No' }}
+          </span>
+        </td>
+      </template>
+
       <!-- Status -->
       <template #cell(is_active)="data">
         <td class="text-center">
@@ -139,6 +157,8 @@
     { key: 'affects_logical', label: 'INVLOG', thClass: 'text-center', tdClass: 'text-center' },
     { key: 'is_purchase', label: 'Purchase', thClass: 'text-center', tdClass: 'text-center' },
     { key: 'is_sales', label: 'Sales', thClass: 'text-center', tdClass: 'text-center' },
+    { key: 'is_operational', label: 'Operational', thClass: 'text-center', tdClass: 'text-center' },
+    { key: 'allow_negative_sales', label: 'Negative Sales', thClass: 'text-center', tdClass: 'text-center' },
     { key: 'is_active', label: 'Status', thClass: 'text-center', tdClass: 'text-center' },
     { key: 'actions', label: 'Actions', thClass: 'text-center', tdClass: 'text-center' },
   ];
@@ -158,7 +178,7 @@
   const filteredItems = computed(() => {
     if (!search.value) return docTypes.value;
     return docTypes.value.filter(item =>
-      `${item.type_code} ${item.description || ''}`.toLowerCase().includes(search.value.toLowerCase())
+      `${item.type_code} ${item.description || ''} ${item.is_operational ? 'operational' : 'non-operational'} ${item.allow_negative_sales ? 'negative sales' : 'no negative sales'}`.toLowerCase().includes(search.value.toLowerCase())
     );
   });
 

@@ -1,6 +1,6 @@
 <template>
     <div class="container">
-        <h3 class="pt-3"><p>Piece Work Prices</p></h3>
+        <h3 class="text-warning pt-3"><p>Piece Work Prices</p></h3>
         <div class="card shadow mb-4">
             <div class="card-header py-2">
                 <h6 class="m-0 font-weight-bold text-primary">{{ isNewPrice ? 'Create' : 'Edit' }} Price</h6>

@@ -3,6 +3,8 @@ from django.db import transaction
 from rest_framework import serializers, viewsets
 from .models import WorkPrice, Contract, ContractDetails, Builder, Job, HouseModel
 from crewsapp.models import Crew
+from apptransactions.models import PartyType, PartyCategory
+from appinventory.models import PriceType
 
 import logging
 
@@ -11,9 +13,130 @@ logger = logging.getLogger(__name__)
 # Serializer for the Builder model
 # Serializador para el modelo Builder
 class BuilderSerializer(serializers.ModelSerializer):
+    # Campos booleanos para el frontend
+    customer_rank = serializers.BooleanField(write_only=True, required=False, allow_null=True)
+    supplier_rank = serializers.BooleanField(write_only=True, required=False, allow_null=True)
+    
+    # Campos de relaciones
+    types = serializers.PrimaryKeyRelatedField(many=True, queryset=PartyType.objects.filter(is_active=True), required=False, allow_null=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=PartyCategory.objects.filter(is_active=True), required=False, allow_null=True)
+    default_price_type = serializers.PrimaryKeyRelatedField(queryset=PriceType.objects.all(), required=False, allow_null=True)
+    
     class Meta:
         model = Builder
-        fields = ['id', 'name', 'trim_amount', 'rough_amount', 'travel_price_amount']
+        fields = ['id', 'name', 'trim_amount', 'rough_amount', 'travel_price_amount', 
+                 'rfc', 'street', 'floor_office', 'city', 'state', 'zipcode', 
+                 'country', 'phone', 'email', 'types', 'category', 'default_price_type',
+                 'customer_rank', 'supplier_rank', 'is_active']
+    
+    def to_representation(self, instance):
+        """Convierte los enteros a booleanos para el frontend"""
+        data = super().to_representation(instance)
+        data['customer_rank'] = instance.customer_rank > 0
+        data['supplier_rank'] = instance.supplier_rank > 0
+        return data
+    
+    def to_internal_value(self, data):
+        """Convierte los booleanos a enteros para el backend y maneja valores nulos"""
+        # Crear una copia para no modificar el original
+        data_copy = data.copy()
+        
+        # Manejar campos booleanos
+        if 'customer_rank' in data_copy:
+            if data_copy['customer_rank'] is None or data_copy['customer_rank'] == '':
+                data_copy['customer_rank'] = 0
+            else:
+                data_copy['customer_rank'] = 1 if data_copy['customer_rank'] else 0
+        
+        if 'supplier_rank' in data_copy:
+            if data_copy['supplier_rank'] is None or data_copy['supplier_rank'] == '':
+                data_copy['supplier_rank'] = 0
+            else:
+                data_copy['supplier_rank'] = 1 if data_copy['supplier_rank'] else 0
+        
+        # Manejar campos de relaciones que pueden ser nulos
+        if 'types' in data_copy:
+            if data_copy['types'] is None or data_copy['types'] == '' or data_copy['types'] == []:
+                data_copy['types'] = []
+            elif isinstance(data_copy['types'], str):
+                # Si viene como string, convertir a lista vacía
+                data_copy['types'] = []
+        
+        if 'category' in data_copy:
+            if data_copy['category'] is None or data_copy['category'] == '':
+                data_copy['category'] = None
+            elif isinstance(data_copy['category'], str) and data_copy['category'].strip() == '':
+                data_copy['category'] = None
+            
+        if 'default_price_type' in data_copy:
+            if data_copy['default_price_type'] is None or data_copy['default_price_type'] == '':
+                data_copy['default_price_type'] = None
+            elif isinstance(data_copy['default_price_type'], str) and data_copy['default_price_type'].strip() == '':
+                data_copy['default_price_type'] = None
+            
+        return super().to_internal_value(data_copy)
+    
+    def create(self, validated_data):
+        """Crear Builder con manejo de campos ManyToMany"""
+        types_data = validated_data.pop('types', [])
+        builder = Builder.objects.create(**validated_data)
+        if types_data:
+            builder.types.set(types_data)
+        return builder
+    
+    def update(self, instance, validated_data):
+        """Actualizar Builder con manejo de campos ManyToMany"""
+        types_data = validated_data.pop('types', None)
+        
+        # Actualizar campos normales
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        # Actualizar ManyToMany si se proporciona
+        if types_data is not None:
+            instance.types.set(types_data)
+        
+        return instance
+    
+    def validate_name(self, value):
+        """Validar nombre único"""
+        if not value or len(value.strip()) < 2:
+            raise serializers.ValidationError("Must be at least 2 characters.")
+        
+        # Verificar unicidad
+        queryset = Builder.objects.filter(name__iexact=value.strip())
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        
+        if queryset.exists():
+            raise serializers.ValidationError("A builder with this name already exists.")
+        
+        return value.strip()
+    
+    def validate_rfc(self, value):
+        """Validar RFC único"""
+        if value and value.strip():
+            # Verificar unicidad solo si RFC no está vacío
+            queryset = Builder.objects.filter(rfc=value.strip())
+            if self.instance:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            
+            if queryset.exists():
+                raise serializers.ValidationError("A builder with this RFC already exists.")
+            
+            return value.strip()
+        return value
+    
+    def validate_email(self, value):
+        """Validar formato de email"""
+        if value and value.strip():
+            import re
+            email_regex = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+            if not email_regex.match(value.strip()):
+                raise serializers.ValidationError("Enter a valid email address.")
+            return value.strip().lower()
+        return value
 
 # Mini serializer de lectura (opcional, para debug/UX)
 class CrewMiniSerializer(serializers.ModelSerializer):
@@ -244,7 +367,7 @@ class HouseModelFilteredByJobSerializer(serializers.ModelSerializer):
 class BuilderListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Builder
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'phone', 'email', 'city', 'customer_rank', 'supplier_rank', 'is_active']
 
 
 class JobListSerializer(serializers.ModelSerializer):

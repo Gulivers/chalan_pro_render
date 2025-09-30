@@ -27,7 +27,7 @@ def create_inventory_movement(sender, instance, **kwargs):
     
     def handle_movement():
         try:
-            warehouse = instance.warehouse or instance.document.warehouse
+            warehouse = instance.warehouse
             doc_type = instance.document.document_type
             movement_type = doc_type.stock_movement
 

@@ -22,8 +22,9 @@ class UnitOfMeasureAdmin(admin.ModelAdmin):
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
-    list_display = ('name', 'location', 'is_active')
+    list_display = ('name', 'location', 'is_default', 'is_active')
     search_fields = ('name', 'location')
+    list_filter = ('is_active', 'is_default')
 
 
 @admin.register(ProductCategory)

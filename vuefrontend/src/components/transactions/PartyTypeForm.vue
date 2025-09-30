@@ -6,13 +6,12 @@
 
     <div class="card shadow-sm mx-auto" style="max-width: 720px">
       <div class="card-header d-flex justify-content-center align-items-center">
-        <h5 class="mb-0 text-center">
-          <i class="fas fa-users me-2"></i>
+        <h6 class="mb-0 w-100 text-center text-primary">
           {{ isViewMode ? 'View Party Type' : isEditMode ? 'Edit Party Type' : 'New Party Type' }}
-        </h5>
+        </h6>
       </div>
 
-      <div class="card-body p-4">
+      <div class="card-body p-4  text-start">
         <form @submit.prevent="handleSubmit" novalidate>
           <!-- Name -->
           <div class="mb-3">
@@ -54,7 +53,7 @@
           </div>
 
           <!-- Actions -->
-          <div class="d-flex justify-content-end gap-2">
+          <div class="d-flex justify-content-center gap-2">
             <button type="button" class="btn btn-secondary" :disabled="submitting" @click="goList">
               <i class="fas fa-arrow-left me-1"></i>
               Cancel

@@ -77,6 +77,16 @@ export function setupAxiosInterceptors() {
         );
       }
 
+      // 👇 NUEVO: Manejo silencioso de errores 404 para referencias rotas
+      // No mostrar errores al usuario para referencias que no existen
+      if (status === 404) {
+        const url = originalRequest?.url || '';
+        // Solo logear en consola, no mostrar al usuario
+        console.warn(`Resource not found (404): ${url}`);
+        // No mostrar SweetAlert para errores 404
+        return Promise.reject(error);
+      }
+
       return Promise.reject(error);
     }
   );

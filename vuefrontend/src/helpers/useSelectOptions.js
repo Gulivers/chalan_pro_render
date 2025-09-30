@@ -19,7 +19,7 @@ export default {
               label: opt.name || opt.label,
             }));
             console.log(
-              `📥 Options loaded for "${key}":`,
+              // `📥 Options loaded for "${key}":`,
               this.optionsMap[key]
             );
           } catch (err) {

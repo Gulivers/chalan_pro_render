@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <h3 class="card-title-orange pt-3">
+    <h3 class="text-warning pt-3">
       <p>{{ cleanFormTitle }}</p>
     </h3>
 
@@ -29,7 +29,7 @@
                 type="text"
                 class="form-control"
                 :placeholder="`Enter ${config.label}...`"
-                :readonly="isDisabled"
+                :disabled="isDisabled"
               />
 
               <!-- Textarea -->
@@ -38,7 +38,7 @@
                 v-model.trim="form[key]"
                 class="form-control"
                 :placeholder="`Enter ${config.label}...`"
-                :readonly="isDisabled"
+                :disabled="isDisabled"
               />
 
               <!-- Select -->

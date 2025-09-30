@@ -170,12 +170,14 @@ Sí usaremos validaciones a nivel de serializer y view para tablas transaccional
 (Opcional, recomendado): mapear errores de BD a 400 en el back cuando queramos mensajes por campo más consistentes en transaccionales.
 
 ---
-
+<label class="col-12 col-sm-3 col-form-label text-start text-sm-end"> Este label se alinea a la derecha al input y se queda arriba en movil
 <div class="row mt-4">
   <div class="col-12 d-flex flex-column flex-sm-row justify-content-center align-items-center gap-2">
     <!-- botones iguales al ejemplo de arriba -->
   </div>
 </div>
+
+
 🔮 Clave: d-flex justify-content-center centra horizontalmente; gap-2 separa; y con la opción 2, flex-column flex-sm-row apila en pantallas chicas y alinea en fila desde sm.
 
 ---
@@ -213,6 +215,56 @@ Para verificar case sentitive en la BD para que unique=True trabaje
   SHOW VARIABLES LIKE 'collation_%';
   SHOW FULL COLUMNS FROM apptransactions_partycategory LIKE 'name';
 Si la columna name está en _ci, unique=True será case-insensitive para evitar duplicados de datos.
+
+---
+
+Patrón estándar de formularios (Chalan-Pro)
+
+Encabezado principal centrado, color orange (h2.text-orange.text-center), sin fw-semibold.
+
+Subtítulo dinámico con title = computed(() => isCreateMode ? 'Create …' : isViewMode ? 'View …' : 'Edit …') en h6.text-primary.text-center dentro del card-header.
+
+Card base con class="card shadow mb-4" para sombra y separación vertical.
+
+Formulario horizontal: labels a la izquierda usando grid (ej. row g-2, label.col-sm-3.col-form-label, control en col-sm-9).
+
+Responsive: en móviles, labels alineados a la izquierda con media query:
+
+@media (max-width: 576px){ .col-form-label{ text-align:left!important; } }
+
+
+Validación de negocio mínima (cliente): longitudes, formato de email, enteros no negativos para ranks, etc. Mantener en función validateClient().
+
+Validación de requeridos con SweetAlert2 (antes del submit):
+
+const REQUIRED_LABELS = { name:'Name', ..., default_price_type:'Default Price Type' }
+if (!validateRequiredFields()) {
+  Swal.fire({ title:'Missing Required Fields', html: `<ul>${...}</ul>`, icon:'error' })
+  return
+}
+
+
+Catálogos con auto-refresh: cargar catálogos primero y refrescar al volver/recuperar foco:
+
+onActivated(() => refreshCatalogs(true));
+window.addEventListener('focus', () => refreshCatalogs(true));
+
+
+Botonera centrada al final:
+
+<div class="mt-4 d-flex justify-content-center gap-2">
+  <button class="btn btn-primary">Save</button>
+  <button class="btn btn-secondary">Cancel</button>
+</div>
+
+---
+
+### 🎯 Tooltip global `v-tt`
+
+- Uso: `<input v-tt="'Texto del tooltip'">`  
+- Posiciones: `v-tt:right`, `v-tt:left`, `v-tt:bottom`.  
+- Estándar de formularios CRUD de Chalan-Pro.  
+- Cierra automáticamente al cambiar de input, click fuera, `Tab` o `Esc`.
 
 ---
 

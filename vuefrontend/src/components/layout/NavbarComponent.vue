@@ -77,15 +77,31 @@
         menuItems: [
           { text: 'Dashboard', route: '/' },
           {
-            text: 'Schedule',
+            text: 'Operations',
             isOpen: false,
             children: [
               { text: 'Schedule', route: '/schedule' },
               { text: 'Job Communications', route: '/chat-general' },
+              { text: 'Transactions', route: '/transactions', permission: 'apptransactions.view_transaction' },
+              { text: 'Work Accounts', route: '/work-accounts', permission: 'apptransactions.view_workaccount' },
             ],
           },
           {
-            text: 'Piece Work',
+            text: 'Inventory',
+            isOpen: false,
+            children: [
+              { text: 'Dashboard', route: '/inventory-dashboard', permission: 'appinventory.view_product' },
+              { text: 'Products', route: '/products', permission: 'appinventory.view_product' },
+              { text: 'Warehouses', route: '/warehouses', permission: 'appinventory.view_warehouse' },
+              { text: 'Product Categories', route: '/product-categories', permission: 'appinventory.view_productcategory' },
+              { text: 'Product Brands', route: '/product-brands', permission: 'appinventory.view_productbrand' },
+              { text: 'Price Types', route: '/price-types', permission: 'appinventory.view_pricetype' },
+              { text: 'Unit Measures', route: '/unit-measures', permission: 'appinventory.view_unitofmeasure' },
+              { text: 'Unit Categories', route: '/unit-categories', permission: 'appinventory.view_unitcategory' },
+            ],
+          },
+          {
+            text: 'Contracts & Pricing',
             isOpen: false,
             children: [
               { text: 'Contracts', route: '/contracts' },
@@ -94,37 +110,12 @@
             ],
           },
           {
-            text: 'Inventory',
+            text: 'Entities',
             isOpen: false,
             children: [
-              { text: 'Warehouses', route: '/warehouses', permission: 'appinventory.view_warehouse' },
-              {
-                text: 'Product Categories',
-                route: '/product-categories',
-                permission: 'appinventory.view_productcategory',
-              },
-              { text: 'Product Brands', route: '/product-brands', permission: 'appinventory.view_productbrand' },
-              { text: 'Unit Category', route: '/unit-categories', permission: 'appinventory.view_unitcategory' },
-              // { text: 'Product Units', route: '/product-units', permission: 'appinventory.view_productunit' },
-              { text: 'Unit Measures', route: '/unit-measures', permission: 'appinventory.view_unitofmeasure' },
-              { text: 'Price Types', route: '/price-types', permission: 'appinventory.view_pricetype' },
-              { text: 'Products', route: '/products', permission: 'appinventory.view_product' },
-            ],
-          },
-          {
-            text: 'Party',
-            isOpen: false,
-            children: [
+              { text: 'Builders & Parties', route: '/builders', permission: 'ctrctsapp.view_builder' },
               { text: 'Party Types', route: '/party-types', permission: 'apptransactions.view_partytype' },
               { text: 'Party Categories', route: '/party-categories', permission: 'apptransactions.view_partycategory' },
-              { text: 'Parties', route: '/parties', permission: 'apptransactions.view_party' },
-            ],
-          },
-          {
-            text: 'Transactions',
-            isOpen: false,
-            children: [
-              { text: 'Transactions Types', route: '/document-types', permission: 'apptransactions.view_documenttype' },
             ],
           },
           {
@@ -133,6 +124,13 @@
             children: [
               { text: 'Communities Map', route: '/map' },
               { text: 'Supervisor Communities', route: '/supervisor-communities' },
+            ],
+          },
+          {
+            text: 'Configuration',
+            isOpen: false,
+            children: [
+              { text: 'Transactions Types', route: '/document-types', permission: 'apptransactions.view_documenttype' },
             ],
           },
           { text: 'About', route: '/about' },

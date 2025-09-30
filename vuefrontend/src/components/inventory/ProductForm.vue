@@ -1,28 +1,65 @@
 <template>
   <div class="container mt-4">
+    <div class="text-center">
+      <h3 class="text-warning">Product Form</h3>
+    </div>
     <div class="card shadow" style="height: auto">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">{{ objectId ? 'Edit Product' : 'Create Product' }}</h5>
-        <button class="btn btn-secondary btn-sm" @click="cancelForm">Back</button>
+      <div class="card-header d-flex justify-content-center align-items-center">
+        <h6 class="mb-0 ms-5 w-100 text-center text-primary">{{ pageTitle }}</h6>
+        <button class="btn btn-outline-secondary btn-sm" @click="cancelForm">Back</button>
       </div>
 
       <div class="card-body">
-        <form @submit.prevent="handleSubmit">
-          <!-- Campos del producto -->
+        <form @submit.prevent="handleSubmit" novalidate>
+          <!-- Product fields -->
           <div class="row">
             <div class="col-md-6 mb-3">
-              <label>Name</label>
-              <input v-model="product.name" type="text" class="form-control" required />
+              <label class="form-label d-flex align-items-center gap-2">Name</label>
+              <input
+                v-model.trim="product.name"
+                type="text"
+                class="form-control"
+                :class="{ 'is-invalid': fieldErrors.name }"
+                :disabled="isReadOnly"
+                required
+                minlength="3"
+                maxlength="255"
+                v-tt
+                data-title="Product name for identification and display purposes" />
+              <div v-if="fieldErrors.name" class="invalid-feedback">{{ fieldErrors.name }}</div>
             </div>
 
             <div class="col-md-6 mb-3">
-              <label>SKU</label>
-              <input v-model="product.sku" type="text" class="form-control" required />
+              <label class="form-label d-flex align-items-center gap-2">
+                SKU
+                <i
+                  v-tt
+                  class="fas fa-info-circle text-muted"
+                  data-title="Required (min 3). Unique identifier for warehouse/purchasing."></i>
+              </label>
+              <input
+                v-model.trim="product.sku"
+                type="text"
+                class="form-control"
+                :class="{ 'is-invalid': fieldErrors.sku }"
+                :disabled="isReadOnly"
+                required
+                minlength="3"
+                maxlength="100"
+                v-tt
+                data-title="Unique identifier for warehouse and purchasing operations" />
+              <div v-if="fieldErrors.sku" class="invalid-feedback">{{ fieldErrors.sku }}</div>
             </div>
 
             <!-- Category -->
             <div class="col-md-6 mb-3">
-              <label>Category</label>
+              <label class="form-label d-flex align-items-center gap-2">
+                Category
+                <i
+                  v-tt
+                  class="fas fa-info-circle text-muted"
+                  data-title="Required. Group products for filtering and analytics."></i>
+              </label>
               <div class="d-flex align-items-center">
                 <v-select
                   :options="categories"
@@ -31,13 +68,18 @@
                   label="name"
                   placeholder="Select Category"
                   class="flex-grow-1"
+                  :class="{ 'is-invalid': fieldErrors.category }"
                   :disabled="isReadOnly"
-                  @open="loadCategories" />
+                  @open="loadCategories"
+                  v-tt
+                  data-title="Required field for product categorization" />
                 <button
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
                   @click="openCategoryModal('add')"
-                  :disabled="isReadOnly || !hasPermission('appinventory.add_productcategory')">
+                  :disabled="isReadOnly || !hasPermission('appinventory.add_productcategory')"
+                  v-tt
+                  data-title="Add a new category to the system">
                   <img src="@assets/img/icon-addlink.svg" alt="Add" width="15" height="15" />
                 </button>
                 <button
@@ -45,15 +87,24 @@
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
                   @click="openCategoryModal('edit', product.category)"
-                  :disabled="isReadOnly || !hasPermission('appinventory.change_productcategory')">
+                  :disabled="isReadOnly || !hasPermission('appinventory.change_productcategory')"
+                  v-tt
+                  data-title="Edit the currently selected category">
                   <img src="@assets/img/icon-changelink.svg" alt="Edit" width="15" height="15" />
                 </button>
               </div>
+              <div v-if="fieldErrors.category" class="invalid-feedback d-block">{{ fieldErrors.category }}</div>
             </div>
 
             <!-- Brand -->
             <div class="col-md-6 mb-3">
-              <label>Brand</label>
+              <label class="form-label d-flex align-items-center gap-2">
+                Brand
+                <i
+                  v-tt
+                  class="fas fa-info-circle text-muted"
+                  data-title="Required for product traceability and brand management"></i>
+              </label>
               <div class="d-flex align-items-center">
                 <v-select
                   :options="brands"
@@ -62,13 +113,18 @@
                   label="name"
                   placeholder="Select Brand"
                   class="flex-grow-1"
+                  :class="{ 'is-invalid': fieldErrors.brand }"
                   :disabled="isReadOnly"
-                  @open="loadBrands" />
+                  @open="loadBrands"
+                  v-tt
+                  data-title="Required field for brand selection" />
                 <button
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
                   @click="openBrandModal('add')"
-                  :disabled="isReadOnly || !hasPermission('appinventory.add_productbrand')">
+                  :disabled="isReadOnly || !hasPermission('appinventory.add_productbrand')"
+                  v-tt
+                  data-title="Add a new brand to the system">
                   <img src="@assets/img/icon-addlink.svg" alt="Add" width="15" height="15" />
                 </button>
                 <button
@@ -76,15 +132,24 @@
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
                   @click="openBrandModal('edit', product.brand)"
-                  :disabled="isReadOnly || !hasPermission('appinventory.change_productbrand')">
+                  :disabled="isReadOnly || !hasPermission('appinventory.change_productbrand')"
+                  v-tt
+                  data-title="Edit the currently selected brand">
                   <img src="@assets/img/icon-changelink.svg" alt="Edit" width="15" height="15" />
                 </button>
               </div>
+              <div v-if="fieldErrors.brand" class="invalid-feedback d-block">{{ fieldErrors.brand }}</div>
             </div>
 
             <!-- Default Unit -->
             <div class="col-md-6 mb-3">
-              <label>Default Unit</label>
+              <label class="form-label d-flex align-items-center gap-2">
+                Default Unit
+                <i
+                  v-tt
+                  class="fas fa-info-circle text-muted"
+                  data-title="Required. Primary unit used for stock and valuations (e.g., EA, FT)."></i>
+              </label>
               <div class="d-flex align-items-center">
                 <v-select
                   :options="units"
@@ -93,13 +158,18 @@
                   label="name"
                   placeholder="Select Unit"
                   class="flex-grow-1"
+                  :class="{ 'is-invalid': fieldErrors.unit_default }"
                   :disabled="isReadOnly"
-                  @open="loadUnits" />
+                  @open="loadUnits"
+                  v-tt
+                  data-title="Required field for unit selection" />
                 <button
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
                   @click="openUnitModal('add')"
-                  :disabled="isReadOnly || !hasPermission('appinventory.add_unitofmeasure')">
+                  :disabled="isReadOnly || !hasPermission('appinventory.add_unitofmeasure')"
+                  v-tt
+                  data-title="Add a new unit of measure to the system">
                   <img src="@assets/img/icon-addlink.svg" alt="Add" width="15" height="15" />
                 </button>
                 <button
@@ -107,23 +177,52 @@
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
                   @click="openUnitModal('edit', product.unit_default)"
-                  :disabled="isReadOnly || !hasPermission('appinventory.change_unitofmeasure')">
+                  :disabled="isReadOnly || !hasPermission('appinventory.change_unitofmeasure')"
+                  v-tt
+                  data-title="Edit the currently selected unit">
                   <img src="@assets/img/icon-changelink.svg" alt="Edit" width="15" height="15" />
                 </button>
               </div>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label>Reorder Level</label>
-              <input v-model="product.reorder_level" type="number" step="0.01" class="form-control" />
+              <div v-if="fieldErrors.unit_default" class="invalid-feedback d-block">{{ fieldErrors.unit_default }}</div>
             </div>
 
-            <div class="col-md-6 mb-3 d-flex align-items-center gap-2">
-              <input v-model="product.is_active" type="checkbox" class="form-check-input" id="isActive" />
-              <label for="isActive" class="form-check-label">Active</label>
+            <div class="col-md-6 mb-3">
+              <label class="form-label d-flex align-items-center gap-2">
+                Reorder Level
+                <i
+                  v-tt
+                  class="fas fa-info-circle text-muted"
+                  data-title="Alert threshold to trigger restock notifications"></i>
+              </label>
+              <input
+                v-model.number="product.reorder_level"
+                type="number"
+                step="0.01"
+                class="form-control"
+                :disabled="isReadOnly"
+                min="0"
+                v-tt
+                data-title="Optional. Used for low-stock alerts and inventory management" />
+            </div>
+
+            <div class="col-md-6 mb-1 d-flex align-items-center gap-2">
+              <input
+                v-model="product.is_active"
+                type="checkbox"
+                class="form-check-input"
+                id="isActive"
+                :disabled="isReadOnly" />
+              <label
+                for="isActive"
+                class="form-check-label"
+                v-tt
+                data-title="Toggle product availability in the system">
+                Active
+              </label>
             </div>
           </div>
 
-          <!-- Tabla combinada ProductUnit + ProductPrice -->
+          <!-- Combined ProductUnit + ProductPrice table -->
           <ProductPriceUnitTable
             v-model="productPriceUnits"
             :priceTypes="priceTypes"
@@ -131,16 +230,22 @@
             @open-modal="handleOpenModal"
             @edit-modal="handleEditModal"
             @refresh-priceTypes="loadPriceTypes"
-            @refresh-units="loadUnits" />
+            @refresh-units="loadUnits"
+            :readonly="isReadOnly" />
 
-          <div class="mt-4">
-            <button type="submit" class="btn btn-primary">Save</button>
-            <button type="button" class="btn btn-secondary ms-2" @click="cancelForm">Cancel</button>
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary" :disabled="isReadOnly || submitting">
+              <i v-if="!submitting" class="fas fa-save me-1"></i>
+              <i v-else class="fas fa-spinner fa-spin me-1"></i>
+              {{ submitting ? 'Saving...' : $route?.query?.id || $route?.params?.id || objectId ? 'Update' : 'Save' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary" @click="cancelForm">Cancel</button>
           </div>
         </form>
       </div>
     </div>
-    <!-- Modales para agregar/editar Category, Brand y Unit -->
+
+    <!-- Modals for Category, Brand, Unit, PriceType -->
     <CategoryModal ref="categoryModal" :objectId="modalObjectId" @refreshCategories="loadCategories" />
     <BrandModal ref="brandModal" :objectId="modalObjectId" @refreshBrands="loadBrands" />
     <UnitModal ref="unitModal" :objectId="modalObjectId" @refreshUnits="loadUnits" />
@@ -149,6 +254,7 @@
 </template>
 
 <script>
+  // Options API to keep consistency with current codebase
   import axios from 'axios';
   import VSelect from 'vue-select';
   import 'vue-select/dist/vue-select.css';
@@ -158,6 +264,8 @@
   import BrandModal from '@/components/inventory/BrandModal.vue';
   import UnitModal from '@/components/inventory/UnitModal.vue';
   import PriceTypeModal from '@/components/inventory/PriceTypeModal.vue';
+
+  const LIST_ROUTE = '/products'; // redirect target per Chalan-Pro CRUD pattern
 
   export default {
     name: 'ProductForm',
@@ -192,14 +300,36 @@
         units: [],
         priceTypes: [],
         modalObjectId: null,
-        isReadOnly: false,
+        submitting: false,
+        isReadOnly: false, // view mode lock
+        fieldErrors: {}, // per-field validation feedback mapping
       };
     },
+    computed: {
+      pageTitle() {
+        if (this.isReadOnly) return 'View Product';
+        const id = this.objectId || this.$route?.params?.id || this.$route?.query?.id;
+        return id ? 'Edit Product' : 'Create Product';
+      },
+    },
     created() {
+      // Support query-based navigation from ProductList: ?mode=view|edit&id=XX
+      this.isReadOnly = this.$route?.query?.mode === 'view' || this.isReadOnly;
       this.loadInitialData();
-      if (this.objectId) this.loadProduct();
+
+      const id = this.objectId || this.$route?.params?.id || this.$route?.query?.id;
+      if (id) this.loadProduct();
+    },
+    watch: {
+      '$route.query.mode'(val) {
+        this.isReadOnly = val === 'view';
+      },
+      '$route.query.id'(val, oldVal) {
+        if (val && val !== oldVal) this.loadProduct();
+      },
     },
     methods: {
+      // --- Loaders ---
       async loadInitialData() {
         try {
           const [catRes, brandRes, unitRes, priceTypeRes] = await Promise.all([
@@ -215,143 +345,267 @@
           this.priceTypes = priceTypeRes.data;
         } catch (err) {
           console.error('Failed to load select options', err);
+          this.notifyToastError?.('Failed to load lists');
         }
       },
       async loadProduct() {
         try {
-          const res = await axios.get(`/api/products/${this.objectId}/`);
+          const id = this.objectId || this.$route?.params?.id || this.$route?.query?.id;
+          if (!id) return;
+          const res = await axios.get(`/api/products/${id}/`);
           this.product = res.data;
-          this.productPriceUnits = res.data.price_units || [];
-          if (res.data.prices?.length > 0) {
-            res.data.prices.forEach(price => {
-              const match = this.productPriceUnits.find(pu => pu.unit === price.unit);
-              if (match) {
-                Object.assign(match, price);
-              } else {
-                this.productPriceUnits.push(price);
-              }
-            });
-          }
-        } catch (err) {
-          console.error('Error loading product:', err);
-        }
-      },
-      async handleSubmit() {
-        try {
-          // 1. Limpieza y validación de los datos de precios
-          const cleanedPriceUnits = [];
-          const cleanedPrices = [];
-          let hasError = false;
-          let errorMessages = [];
 
-          this.productPriceUnits.forEach((pu, idx) => {
-            // Conversión segura a ID
-            const unitId = typeof pu.unit === 'object' ? pu.unit?.id : pu.unit;
-            const priceTypeId = typeof pu.price_type === 'object' ? pu.price_type?.id : pu.price_type;
+          const prices = Array.isArray(res.data.prices) ? res.data.prices : [];
+          const unitsFlags = Array.isArray(res.data.price_units) ? res.data.price_units : [];
 
-            // Validación de campos obligatorios
-            if (!unitId || !priceTypeId) {
-              hasError = true;
-              errorMessages.push(`Fila ${idx + 1}: Falta unidad o tipo de precio.`);
-              return;
-            }
+          // Map unit → flags (purchase/sale)
+          const flagsByUnit = new Map();
+          unitsFlags.forEach(u => {
+            const uid = this.normalizeId(u.unit);
+            if (uid) flagsByUnit.set(uid, { is_purchase: !!u.is_purchase, is_sale: !!u.is_sale });
+          });
 
-            // Validación de price (debe ser número válido)
-            let priceValue = pu.price;
-            if (priceValue === '' || priceValue === null || priceValue === undefined) priceValue = null;
-            else priceValue = Number(priceValue);
+          // Build one table row per PRICE record (unit, price_type)
+          const rows = prices.map(p => {
+            const uid = typeof p.unit === 'object' ? p.unit?.id : p.unit;
+            const ptid = typeof p.price_type === 'object' ? p.price_type?.id : p.price_type;
+            const fb = flagsByUnit.get(uid) || { is_purchase: false, is_sale: false };
+            return {
+              price_type: ptid,
+              unit: uid,
+              is_purchase: typeof p.is_purchase !== 'undefined' ? !!p.is_purchase : fb.is_purchase,
+              is_sale: typeof p.is_sale !== 'undefined' ? !!p.is_sale : fb.is_sale,
+              price: p.price,
+              is_default: !!p.is_default,
+              valid_from: p.valid_from || null,
+              valid_until: p.valid_until || null,
+              is_active: p.is_active !== false,
+            };
+          });
 
-            // Si hay precio, debe ser número válido
-            if (priceValue !== null && (isNaN(priceValue) || priceValue < 0)) {
-              hasError = true;
-              errorMessages.push(`Fila ${idx + 1}: El precio es inválido.`);
-              return;
-            }
-
-            // Validación de fechas (puedes hacer más robusto si lo deseas)
-            const validFrom = pu.valid_from || null;
-            const validUntil = pu.valid_until || null;
-
-            // Armar objeto de unidad/precio
-            cleanedPriceUnits.push({
-              unit: unitId,
-              is_purchase: !!pu.is_purchase,
-              is_sale: !!pu.is_sale,
-            });
-
-            // Solo agregar precios completos
-            if (priceTypeId && unitId && priceValue !== null) {
-              cleanedPrices.push({
-                price_type: priceTypeId,
-                unit: unitId,
-                price: priceValue,
-                is_default: !!pu.is_default,
-                valid_from: validFrom,
-                valid_until: validUntil,
-                is_active: pu.is_active !== false, // default true
+          // If there are unit flags without price rows, show placeholders for visibility
+          unitsFlags.forEach(u => {
+            const uid = this.normalizeId(u.unit);
+            if (uid && !rows.some(r => r.unit === uid)) {
+              rows.push({
+                price_type: '',
+                unit: uid,
+                is_purchase: !!u.is_purchase,
+                is_sale: !!u.is_sale,
+                price: '',
+                is_default: false,
+                valid_from: '',
+                valid_until: '',
+                is_active: true,
               });
             }
           });
 
-          if (hasError) {
-            // Mostrar errores y abortar
-            Swal.fire({
-              icon: 'error',
-              title: 'Errores en los precios',
-              html: `<ul style="text-align:left">${errorMessages.map(e => `<li>${e}</li>`).join('')}</ul>`
+          this.productPriceUnits = rows.length ? rows : [];
+          if (!this.productPriceUnits.length && !this.isReadOnly) {
+            // ensure at least one empty row for UX on fresh create
+            this.productPriceUnits.push({
+              price_type: '',
+              unit: '',
+              is_purchase: false,
+              is_sale: false,
+              price: '',
+              is_default: false,
+              valid_from: '',
+              valid_until: '',
+              is_active: true,
             });
+          }
+        } catch (err) {
+          console.error('Error loading product:', err);
+          this.notifyToastError?.('Failed to load product');
+        }
+      },
+
+      // --- Helpers ---
+      normalizeId(value) {
+        return typeof value === 'object' ? value?.id : value;
+      },
+      pushFieldError(field, msg) {
+        this.fieldErrors[field] = msg;
+      },
+      clearFieldErrors() {
+        this.fieldErrors = {};
+      },
+      validateMinimal() {
+        // Trim and minimal client validations per Chalan‑Pro Standard Form Pattern
+        this.product.name = (this.product.name || '').trim();
+        this.product.sku = (this.product.sku || '').trim();
+
+        if (!this.product.name) this.pushFieldError('name', 'Name is required.');
+        if (!this.product.sku) this.pushFieldError('sku', 'SKU is required.');
+        if (this.product.name && this.product.name.length < 3) this.pushFieldError('name', 'Min length is 3.');
+        if (this.product.sku && this.product.sku.length < 3) this.pushFieldError('sku', 'Min length is 3.');
+        if (this.product.name && this.product.name.length > 255) this.pushFieldError('name', 'Max length is 255.');
+        if (this.product.sku && this.product.sku.length > 100) this.pushFieldError('sku', 'Max length is 100.');
+
+        // Required selects
+        if (!this.normalizeId(this.product.category)) this.pushFieldError('category', 'Category is required.');
+        if (!this.normalizeId(this.product.brand)) this.pushFieldError('brand', 'Brand is required.');
+        if (!this.normalizeId(this.product.unit_default))
+          this.pushFieldError('unit_default', 'Default Unit is required.');
+      },
+      validatePriceMatrix() {
+        // Enforce uniqueness of (unit, price_type) rows and numeric price
+        const comboSet = new Set();
+        const errors = [];
+
+        this.productPriceUnits.forEach((pu, idx) => {
+          const unitId = this.normalizeId(pu.unit);
+          const priceTypeId = this.normalizeId(pu.price_type);
+
+          if (!unitId && (pu.is_purchase || pu.is_sale || pu.price)) {
+            errors.push(`Row ${idx + 1}: Unit is required when defining price or flags.`);
+          }
+
+          if (priceTypeId && unitId) {
+            const key = `${unitId}|${priceTypeId}`;
+            if (comboSet.has(key)) errors.push(`Row ${idx + 1}: Duplicate (Unit, PriceType).`);
+            comboSet.add(key);
+          }
+
+          if (pu.price !== null && pu.price !== undefined && pu.price !== '') {
+            const num = Number(pu.price);
+            if (Number.isNaN(num) || num < 0) errors.push(`Row ${idx + 1}: Price must be a non‑negative number.`);
+          }
+        });
+
+        if (errors.length) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Price table errors',
+            html: `<ul style=\"text-align:left\">${errors.map(e => `<li>${e}</li>`).join('')}</ul>`,
+          });
+          return false;
+        }
+        return true;
+      },
+
+      // --- Submit ---
+      async handleSubmit() {
+        if (this.isReadOnly) return; // locked in View mode
+
+        this.submitting = true;
+        this.clearFieldErrors();
+
+        try {
+          // 1) Minimal validations (client‑side)
+          this.validateMinimal();
+          if (Object.keys(this.fieldErrors).length) {
+            this.submitting = false;
+            return;
+          }
+          if (!this.validatePriceMatrix()) {
+            this.submitting = false;
             return;
           }
 
-          // 2. Armar el payload limpio
+          // 2) Clean payload (per Chalan‑Pro Policy: sanitize before sending)
+          const cleanedPriceUnits = [];
+          const cleanedPrices = [];
+          const unitSeen = new Set();
+
+          this.productPriceUnits.forEach(pu => {
+            const unitId = this.normalizeId(pu.unit);
+            const priceTypeId = this.normalizeId(pu.price_type);
+
+            // units table for flags (dedupe per unit)
+            if (unitId && !unitSeen.has(unitId)) {
+              cleanedPriceUnits.push({
+                unit: unitId,
+                is_purchase: !!pu.is_purchase,
+                is_sale: !!pu.is_sale,
+              });
+              unitSeen.add(unitId);
+            }
+
+            // prices table (complete entries only)
+            const priceValue = pu.price === '' || pu.price === null || pu.price === undefined ? null : Number(pu.price);
+            if (unitId && priceTypeId && priceValue !== null && !Number.isNaN(priceValue)) {
+              cleanedPrices.push({
+                unit: unitId,
+                price_type: priceTypeId,
+                price: priceValue,
+                is_purchase: !!pu.is_purchase,
+                is_sale: !!pu.is_sale,
+                is_default: !!pu.is_default,
+                valid_from: pu.valid_from || null,
+                valid_until: pu.valid_until || null,
+                is_active: pu.is_active !== false,
+              });
+            }
+          });
+
           const payload = {
             name: this.product.name,
             sku: this.product.sku,
-            category: typeof this.product.category === 'object' ? this.product.category?.id : this.product.category,
-            brand: typeof this.product.brand === 'object' ? this.product.brand?.id : this.product.brand,
-            unit_default: typeof this.product.unit_default === 'object' ? this.product.unit_default?.id : this.product.unit_default,
+            category: this.normalizeId(this.product.category),
+            brand: this.normalizeId(this.product.brand),
+            unit_default: this.normalizeId(this.product.unit_default),
             reorder_level: this.product.reorder_level,
             is_active: !!this.product.is_active,
             price_units: cleanedPriceUnits,
             prices: cleanedPrices,
           };
 
-          // 3. Logs de depuración
-          console.log('🟢 ProductPriceUnits originales:', this.productPriceUnits);
-          console.log('🟢 cleanedPriceUnits:', cleanedPriceUnits);
-          console.log('🟢 cleanedPrices:', cleanedPrices);
-          console.log('🟢 Payload final:', payload);
-
-          // 4. Envío
-          const url = this.objectId ? `/api/products/${this.objectId}/` : '/api/products/';
-          const method = this.objectId ? 'put' : 'post';
+          // 3) Send
+          const id = this.objectId || this.$route?.params?.id || this.$route?.query?.id;
+          const url = id ? `/api/products/${id}/` : '/api/products/';
+          const method = id ? 'put' : 'post';
 
           await axios({ method, url, data: payload });
 
-          Swal.fire({
-            icon: 'success',
-            title: 'Éxito',
-            text: 'Producto guardado correctamente',
-          });
-          this.$router.push('/products');
+          // Success per Chalan‑Pro CRUD Pattern: silent success + redirect
+          this.notifyToastSuccess?.(id ? 'Product updated' : 'Product created');
+          this.$router.push(LIST_ROUTE);
         } catch (err) {
           console.error('Failed to save product:', err);
-          if (err.response?.data) {
-            const errors = err.response.data;
-            const errorMsg = typeof errors === 'object' ? JSON.stringify(errors, null, 2) : errors;
-            Swal.fire({
-              icon: 'error',
-              title: 'Validation Error',
-              html: `<pre style="text-align:left">${errorMsg}</pre>`
-            });
+
+          const status = err?.response?.status;
+          const data = err?.response?.data;
+
+          // Map DRF 400 field errors to inputs
+          if (status === 400 && data && typeof data === 'object') {
+            for (const [key, value] of Object.entries(data)) {
+              const msg = Array.isArray(value) ? value.join(' ') : String(value);
+              if (['name', 'sku', 'category', 'brand', 'unit_default'].includes(key)) {
+                this.pushFieldError(key, msg);
+              }
+            }
+
+            const nonField = data.non_field_errors || data.detail;
+            if (nonField) {
+              const msg = Array.isArray(nonField) ? nonField.join(' ') : String(nonField);
+              Swal.fire({ icon: 'error', title: 'Validation Error', text: msg });
+            }
+
+            if (!Object.keys(this.fieldErrors).length && !data.non_field_errors && !data.detail) {
+              Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                html: `<pre style=\"text-align:left\">${this.escapeHtml(JSON.stringify(data, null, 2))}</pre>`,
+              });
+            }
           } else {
             Swal.fire('Error', 'Failed to save product', 'error');
           }
+        } finally {
+          this.submitting = false;
         }
       },
+
       cancelForm() {
-        this.$router.back();
+        // Per pattern: always allow back/escape to list
+        if (window.history.length > 1) this.$router.back();
+        else this.$router.push(LIST_ROUTE);
       },
+
+      // --- Modal open helpers ---
       openCategoryModal(mode, id = null) {
         this.modalObjectId = mode === 'edit' ? id : null;
         this.$refs.categoryModal.openModal();
@@ -364,6 +618,7 @@
         this.modalObjectId = mode === 'edit' ? id : null;
         this.$refs.unitModal.openModal();
       },
+
       loadCategories() {
         axios.get('/api/productcategory/').then(res => {
           this.categories = res.data;
@@ -384,6 +639,7 @@
           this.priceTypes = res.data;
         });
       },
+
       handleOpenModal(type) {
         this.modalObjectId = null;
         if (type === 'priceType') this.$refs.priceTypeModal.openModal();
@@ -394,7 +650,29 @@
         if (type === 'priceType') this.$refs.priceTypeModal.openModal();
         if (type === 'unit') this.$refs.unitModal.openModal();
       },
+
+      // --- Utils ---
+      escapeHtml(str) {
+        return String(str)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      },
     },
   };
 </script>
 
+<style scoped>
+  .card-header h5 {
+    font-weight: 600;
+  }
+  /* Optional: add a red border on invalid vue-select to match Bootstrap */
+  :deep(.is-invalid .vs__dropdown-toggle) {
+    border-color: #dc3545;
+  }
+  :deep(.is-invalid .vs__dropdown-toggle:focus) {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  }
+</style>

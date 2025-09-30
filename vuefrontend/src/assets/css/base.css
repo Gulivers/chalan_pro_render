@@ -53,51 +53,9 @@ a.deletelink:hover {
 /* Custom Placeholder Styles */
 .form-control::placeholder,
 .form-select::placeholder {
-    color: #6c757d !important;
+    color: #a4abb1 !important;
     opacity: 0.7;
     font-style: italic;
-}
-
-/* Custom Tooltip Styles */
-.custom-tooltip {
-    position: relative;
-    display: inline-block;
-    cursor: help;
-}
-
-.custom-tooltip .tooltip-text {
-    visibility: hidden;
-    width: 250px;
-    background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
-    color: white;
-    text-align: center;
-    border-radius: 8px;
-    padding: 8px 12px;
-    position: absolute;
-    z-index: 1000;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -125px;
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 0.85rem;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.custom-tooltip .tooltip-text::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #6f42c1 transparent transparent transparent;
-}
-
-.custom-tooltip:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
 }
 
 /* Question mark icon styles */
@@ -190,3 +148,34 @@ table td {
   .btn-group .btn:not(:last-child) {
     margin-right: 2px;
   }
+
+  /* Tooltip simple custom */
+/* Tooltip casero (global) */
+.cp-tt{
+    position:absolute;
+    background:#000;
+    color:#fff;
+    padding:6px 8px;
+    border-radius:4px;
+    font-size:12px;
+    line-height:1.2;
+    pointer-events:none;
+    z-index:2000;
+    opacity:0;
+    transition:opacity .12s ease;
+    box-shadow:0 4px 16px rgba(0,0,0,.2);
+  }
+  .cp-tt.show{ opacity:1; }
+  .cp-tt .cp-tt-arrow{
+    position:absolute; width:0; height:0; border:6px solid transparent;
+  }
+  .cp-tt[data-placement="top"]    .cp-tt-arrow{ bottom:-12px; left:50%; transform:translateX(-50%); border-top-color:#000; border-bottom:0; }
+  .cp-tt[data-placement="bottom"] .cp-tt-arrow{ top:-12px;    left:50%; transform:translateX(-50%); border-bottom-color:#000; border-top:0; }
+  .cp-tt[data-placement="left"]   .cp-tt-arrow{ top:50%; right:-12px; transform:translateY(-50%); border-left-color:#000; border-right:0; }
+  .cp-tt[data-placement="right"]  .cp-tt-arrow{ top:50%; left:-12px;  transform:translateY(-50%); border-right-color:#000; border-left:0; }
+
+  /* Fix for vue-select spinner */
+  :deep(.vs__spinner) {
+    border-color: #007bff transparent #007bff transparent;
+  }
+  

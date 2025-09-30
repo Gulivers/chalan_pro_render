@@ -15,7 +15,7 @@ class WorkPriceAdmin(admin.ModelAdmin):
 
 @admin.register(Builder)
 class BuilderAdmin(admin.ModelAdmin):
-    list_display = ['name', 'trim_amount', 'rough_amount', 'travel_price_amount']
+    list_display = ['name', 'party', 'trim_amount', 'rough_amount', 'travel_price_amount']
     list_filter = ('jobs',)
     search_fields = ['name']
 

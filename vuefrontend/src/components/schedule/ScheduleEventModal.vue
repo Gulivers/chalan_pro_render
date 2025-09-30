@@ -165,11 +165,20 @@
                     <div class="d-flex justify-content-end" v-if="this.hasPermission('appschedule.add_eventdraft') && canAccessEventActions">
                       <template v-if="isEditing">
                         <button type="button" class="btn btn-success text-white me-2" @click="submitEvent(true)"
-                            v-if="this.hasPermission('appschedule.add_event')" :disabled="loading || offLine">Save and Post</button>
+                            v-if="this.hasPermission('appschedule.add_event')" :disabled="loading || offLine">
+                            <span v-if="loading || offLine" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Save and Post
+                        </button>
                         <button type="submit" class="btn btn-primary me-2"
-                            v-if="!localFormData.event && this.hasPermission('appschedule.add_eventdraft')" :disabled="loading || offLine">Save</button>
+                            v-if="!localFormData.event && this.hasPermission('appschedule.add_eventdraft')" :disabled="loading || offLine">
+                            <span v-if="loading || offLine" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Save
+                        </button>
                         <button type="button" class="btn btn-danger me-2" @click="deleteEvent"
-                            v-if="!is_draft && localFormData.event && this.hasPermission('appschedule.add_event')" :disabled="loading || offLine">Delete</button>
+                            v-if="!is_draft && localFormData.event && this.hasPermission('appschedule.add_event')" :disabled="loading || offLine">
+                            <span v-if="loading || offLine" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            Delete
+                        </button>
                         <button type="button" class="btn btn-danger"
                             v-if="localFormData.id && this.hasPermission('appschedule.delete_eventdraft')"
                             @click="deleteEvent">Discard draft
@@ -566,6 +575,7 @@ export default {
                   'An event with the same Lot and Community or Address already exists in this Crew Category.',
                   'error'
                 );
+                this.loading = false;
                 return;
               }
             } else {

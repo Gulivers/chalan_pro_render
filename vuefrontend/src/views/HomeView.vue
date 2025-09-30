@@ -5,6 +5,24 @@
       <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
     </div>
 
+    <!-- Sales vs Purchases Comparison (Top) -->
+    <div class="row mb-3">
+      <div class="col-xl-12 col-lg-12">
+        <div class="card shadow mb-4">
+          <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Sales vs Purchases (Last 12 Months)</h6>
+          </div>
+          <div class="card-body">
+            <CustomersSuppliersComparison
+              :comparison-data="comparisonData"
+              :loading="loadingComparison"
+              @refresh="loadComparison"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Content Row -->
     <div class="row">
       <!-- Area Chart -->
@@ -55,6 +73,7 @@
   import AreaChart from '@components/contracts/AreaChart.vue';
   import BarChart from '@components/contracts/BarChart.vue';
   import WeeklySupervisorChart from '@components/schedule/WeeklySupervisorChart.vue';
+  import CustomersSuppliersComparison from '@components/inventory/dashboard/components/CustomersSuppliersComparison.vue';
 
   import axios from 'axios';
 
@@ -64,6 +83,7 @@
       AreaChart,
       BarChart,
       WeeklySupervisorChart,
+      CustomersSuppliersComparison,
     },
 
     mounted() {
@@ -73,6 +93,7 @@
           this.logUserAction('login', 'User', userId, 'User logged in successfully');
         }
       });
+      this.loadComparison();
     },
     methods: {
       // Llamada para obtener la identidad del usuario autenticado
@@ -111,6 +132,25 @@
           console.error('Token no encontrado. El usuario no está autenticado.');
         }
       },
+
+      async loadComparison() {
+        try {
+          this.loadingComparison = true;
+          const response = await axios.get('/api/dashboard/customers-suppliers-comparison/');
+          this.comparisonData = Array.isArray(response.data) ? response.data : [];
+        } catch (error) {
+          console.error('Error loading comparison data:', error);
+          this.comparisonData = [];
+        } finally {
+          this.loadingComparison = false;
+        }
+      },
+    },
+    data() {
+      return {
+        comparisonData: [],
+        loadingComparison: false,
+      };
     },
   });
 </script>

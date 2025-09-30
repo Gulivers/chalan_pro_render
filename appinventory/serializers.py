@@ -33,7 +33,12 @@ class ProductBrandSerializer(serializers.ModelSerializer):
 class ProductPriceSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductPrice
-        exclude = ['product']
+        fields = [
+            'id', 'price_type', 'unit', 'price',
+            'is_default', 'valid_from', 'valid_until',
+            'is_active', 'is_purchase', 'is_sale'
+        ]
+
 
 # Serializador principal para productos, incluye relación con precios y unidades
 class ProductSerializer(serializers.ModelSerializer):

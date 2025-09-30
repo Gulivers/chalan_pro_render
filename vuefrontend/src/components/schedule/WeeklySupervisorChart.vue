@@ -17,22 +17,22 @@
       <div class="col-md-3 d-flex align-items-end justify-content-end me-2"
         v-if="hasPermission('appschedule.view_event')">
 
-        <!-- Dropdown Excel Export -->
-        <div class="btn-group">
-          <button
-            class="btn btn-sm btn-outline-success btn-lg dropdown-toggle"
-            type="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false">
-            <img src="@/assets/img/microsoft-excel-icon.svg" alt="Excel" width="20" class="me-1" />
-            Download Excel Report
-          </button>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" @click.prevent="downloadSupervisorExcel(16)">Last 4 Months</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="downloadSupervisorExcel(24)">Last 6 Months</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="downloadSupervisorExcel(32)">Last 8 Months</a></li>
-            <li><a class="dropdown-item" href="#" @click.prevent="downloadSupervisorExcel(52)">Last 12 Months</a></li>
-          </ul>
+        <!-- Select Excel Export -->
+        <div class="excel-export-container">
+          <div class="excel-export-wrapper">
+            <img src="@/assets/img/microsoft-excel-icon.svg" alt="Excel" class="excel-icon" />
+            <select 
+              class="excel-export-select" 
+              v-model="selectedExportPeriod"
+              @change="handleExportPeriodChange">
+              <option value="" disabled>Download Excel Report</option>
+              <option value="16">Last 4 Months</option>
+              <option value="24">Last 6 Months</option>
+              <option value="32">Last 8 Months</option>
+              <option value="52">Last 12 Months</option>
+            </select>
+            <div class="dropdown-arrow">▼</div>
+          </div>
         </div>
       </div>
     </div>
@@ -83,6 +83,7 @@
       const categories = ref([]);
       const isChartVisible = ref(false);
       const selectedWeeks = ref(16);
+      const selectedExportPeriod = ref('');
 
       const fetchCategories = async () => {
         try {
@@ -158,6 +159,14 @@
         fetchChartData();
       };
 
+      const handleExportPeriodChange = () => {
+        if (selectedExportPeriod.value) {
+          downloadSupervisorExcel(parseInt(selectedExportPeriod.value));
+          // Resetear el select después de la descarga
+          selectedExportPeriod.value = '';
+        }
+      };
+
       const downloadSupervisorExcel = async (weeks) => {
         const params = new URLSearchParams({
           weeks,
@@ -180,6 +189,7 @@
         }
       };
 
+
       onMounted(() => {
         fetchCategories();
         fetchChartData();
@@ -190,7 +200,9 @@
         selectedCategory,
         categories,
         isChartVisible,
+        selectedExportPeriod,
         handleCategoryChange,
+        handleExportPeriodChange,
         downloadSupervisorExcel
       };
     },
@@ -208,5 +220,118 @@
   canvas {
     width: 100% !important;
     height: 100% !important;
+  }
+
+  /* Estilos para el select de exportación - Estilo btn-outline-success */
+  .excel-export-container {
+    min-width: 250px;
+  }
+
+  .excel-export-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border: 1px solid #28a745;
+    border-radius: 0.375rem;
+    background-color: transparent;
+    transition: all 0.15s ease-in-out;
+    overflow: hidden;
+  }
+
+  .excel-export-wrapper:hover {
+    background-color: #198754;
+    border-color: #198754;
+  }
+
+  .excel-export-wrapper:hover .excel-export-select {
+    color: white;
+  }
+
+  .excel-export-wrapper:hover .dropdown-arrow {
+    color: white;
+  }
+
+  .excel-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .excel-export-select {
+    background: transparent;
+    color: #28a745;
+    border: none;
+    padding: 0.375rem 2.5rem 0.375rem 2.5rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.5;
+    cursor: pointer;
+    width: 100%;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    transition: color 0.15s ease-in-out;
+  }
+
+  .excel-export-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+  }
+
+  .excel-export-select option {
+    background-color: #f8fff9;
+    color: #155724;
+    padding: 8px 12px;
+    border: none;
+  }
+
+  .excel-export-select option:hover {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  .excel-export-select option:checked {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  .dropdown-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #28a745;
+    font-size: 0.75rem;
+    pointer-events: none;
+    z-index: 2;
+    transition: color 0.15s ease-in-out;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .excel-export-container {
+      min-width: 200px;
+    }
+    
+    .excel-export-select {
+      font-size: 0.8rem;
+      padding: 0.3rem 2rem 0.3rem 2rem;
+    }
+    
+    .excel-icon {
+      left: 10px;
+      width: 18px;
+      height: 18px;
+    }
+    
+    .dropdown-arrow {
+      right: 10px;
+      font-size: 0.7rem;
+    }
   }
 </style>

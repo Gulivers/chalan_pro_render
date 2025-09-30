@@ -25,8 +25,8 @@ from django.db.models.functions import TruncWeek, TruncMonth
 from django.utils import timezone
 from django.conf import settings
 from datetime import datetime, timedelta
-import logging
 
+from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.core.mail import EmailMultiAlternatives
@@ -505,6 +505,8 @@ class BuilderViewSet(viewsets.ModelViewSet):
     serializer_class = BuilderSerializer
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['is_active']
 
     @action(detail=True, methods=["get"])
     def workprices(self, request, pk=None):

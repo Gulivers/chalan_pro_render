@@ -22,6 +22,7 @@
               <th scope="col">Name</th>
               <th scope="col">Location</th>
               <th scope="col">Status</th>
+              <th scope="col">Default</th>
               <th class="text-center">Actions</th>
             </tr>
           </thead>
@@ -33,6 +34,12 @@
               <td>
                 <span class="badge bg-success" v-if="warehouse.is_active">Active</span>
                 <span class="badge bg-secondary" v-else>Inactive</span>
+              </td>
+              <td>
+                <span class="badge bg-warning text-dark" v-if="warehouse.is_default">
+                  <i class="fas fa-star me-1"></i>Default
+                </span>
+                <span class="text-muted" v-else>-</span>
               </td>
               <td class="text-center">
                 <div class="btn-group btn-group-sm">

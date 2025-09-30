@@ -1,5 +1,5 @@
 <template>
-  <TxCard class="shadow-sm mt-4">
+  <TxCard class="shadow-sm mt-0">
     <!-- Header del card -->
     <template #header>
       <div class="d-flex justify-content-between align-items-center w-100">

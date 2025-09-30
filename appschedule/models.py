@@ -83,6 +83,15 @@ class Event(models.Model):
     class Meta:
         verbose_name = "Event"
         verbose_name_plural = "Events"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['crew', 'date', 'title'],
+                name='uniq_event_crew_date_title'
+            )
+        ]
+        indexes = [
+            models.Index(fields=['date', 'end_dt']),
+        ]
         # ordering = ['-date', 'title']
         # Constraint está definido para PostgreSQL 😏
         #constraints = [
@@ -157,6 +166,9 @@ class EventDraft(models.Model):
     class Meta:
         verbose_name = "Event Draft"
         verbose_name_plural = "Events Draft"
+        indexes = [
+            models.Index(fields=['date', 'end_dt']),
+        ]
         # ordering = ['-date', 'title']
         # Constraint está definido para PostgreSQL 😏
         #constraints = [
@@ -196,7 +208,7 @@ class EventChatMessage(models.Model):
 
 class EventChatReadStatus(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    message = models.ForeignKey('EventChatMessage', on_delete=models.CASCADE, related_name='read_statuses')
+    message = models.ForeignKey('EventChatMessage', on_delete=models.CASCADE, related_name='read_statuses', null=False)
     read_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -62,7 +62,6 @@ class SupervisorCommunitiesView(APIView):
 
         return Response(result)
     
-
 class CrewPermissionView(APIView):
     permission_classes = [IsAuthenticated]
 

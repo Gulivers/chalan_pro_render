@@ -8,7 +8,7 @@ from rest_framework import status
 from itertools import islice
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('ctrctsapp')
 
 # === Opcional: mapea nombres de constraints a errores por campo ===
 # Recomendado si defines UniqueConstraint(name="uq_party_name_ci") u otros.

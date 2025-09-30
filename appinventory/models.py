@@ -48,6 +48,7 @@ class Warehouse(models.Model):
     name = models.CharField(max_length=100, unique=True)
     location = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False, help_text="Warehouse predeterminado para nuevas transacciones")
 
     def __str__(self):
         return self.name
@@ -152,31 +153,55 @@ class InventoryMovement(models.Model):
         return f"{self.get_movement_type_display()} - {self.product} ({self.quantity}) en {self.warehouse}"
 
     def get_converted_quantity(self):
-        print("self.quantity: ",self.quantity)
-        return convert_to_reference_unit(self.product, self.unit, self.quantity)
+        print(f"🔍 get_converted_quantity() iniciado: self.quantity={self.quantity} (tipo: {type(self.quantity)})")
+        result = convert_to_reference_unit(self.product, self.unit, self.quantity)
+        print(f"🔍 get_converted_quantity() resultado: {result} (tipo: {type(result)})")
+        return result
 
     def save(self, *args, **kwargs):
+        print(f"🔍 InventoryMovement.save() iniciado: quantity={self.quantity} (tipo: {type(self.quantity)})")
+        
         if not self.product or not self.warehouse:
             raise ValueError("❌ No se puede guardar InventoryMovement sin producto o almacén.")
 
         print(f"💾 Salvando movimiento: product={self.product}, quantity={self.quantity}, unit={self.unit}, warehouse={self.warehouse}")
 
+        # Verificar que quantity no sea None antes de la conversión
+        if self.quantity is None:
+            print("❌ ERROR: self.quantity es None antes de la conversión")
+            raise ValueError("❌ Quantity no puede ser None")
+
         # Calcular cantidad convertida
         try:
             converted_qty = self.get_converted_quantity() if self.unit else self.quantity
+            print(f"✅ Cantidad convertida: {converted_qty} (tipo: {type(converted_qty)})")
         except Exception as e:
             print(f"❌ Error al convertir cantidad: {e}")
             converted_qty = self.quantity
 
         if converted_qty is None:
+            print("❌ ERROR: converted_qty es None después de la conversión")
             raise ValueError("🔥 Error: cantidad convertida terminó en None")
 
         # Guardar la cantidad convertida en el mismo campo
         self.quantity = converted_qty
+        print(f"✅ Quantity asignado: {self.quantity} (tipo: {type(self.quantity)})")
 
         # Guardar el movimiento
         print(f"🏁 Guardando en DB → quantity={self.quantity} (tipo: {type(self.quantity)})")
-        super().save(force_insert=not self.pk, *args, **kwargs)
+        
+        # Verificar que quantity no sea None justo antes de guardar
+        if self.quantity is None:
+            print("❌ ERROR CRÍTICO: self.quantity es None justo antes de guardar")
+            raise ValueError("❌ Quantity es None justo antes de guardar")
+        
+        try:
+            super().save(force_insert=not self.pk, *args, **kwargs)
+            print(f"✅ InventoryMovement guardado exitosamente con ID: {self.id}")
+        except Exception as e:
+            print(f"❌ ERROR al guardar InventoryMovement: {e}")
+            print(f"🔍 Estado del objeto antes del error: quantity={self.quantity}, product={self.product}, warehouse={self.warehouse}")
+            raise
 
         # Ajustar el stock
         stock, _ = Stock.objects.get_or_create(product=self.product, warehouse=self.warehouse)

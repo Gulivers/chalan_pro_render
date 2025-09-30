@@ -46,19 +46,19 @@
               <td class="text-center">
                 <div class="btn-group btn-group-sm">
                   <button
-                    v-if="this.hasPermission('appinventory.view_product')"
+                    v-if="hasPermission('appinventory.view_product')"
                     class="btn btn-outline-success"
                     @click="viewItem(item.id)">
                     View
                   </button>
                   <button
-                    v-if="this.hasPermission('appinventory.change_product')"
+                    v-if="hasPermission('appinventory.change_product')"
                     class="btn btn-outline-primary"
                     @click="editItem(item.id)">
                     Edit
                   </button>
                   <button
-                    v-if="this.hasPermission('appinventory.delete_product')"
+                    v-if="hasPermission('appinventory.delete_product')"
                     class="btn btn-outline-danger"
                     @click="deleteItem(item.id)">
                     Delete
@@ -112,7 +112,7 @@
           })
           .catch(err => {
             this.loading = false;
-            this.notifyError('Failed to load products.');
+            this.notifyError?.('Failed to load products.');
             console.error('Fetch error:', err);
           });
       },
@@ -128,24 +128,22 @@
               responsive: true,
               pageLength: 50,
               order: [[0, 'desc']],
-              language: {
-                search: 'Search:',
-              },
+              language: { search: 'Search:' },
             });
           }, 50);
         }
       },
       goToCreateForm() {
-        this.$router.push({ name: 'product-form' });
+        // Unificar en una sola ruta con querys
+        this.$router.push({ name: 'product-form', query: { mode: 'create' } });
       },
       viewItem(id) {
-        this.$router.push({ name: 'product-view', params: { id } });
+        // Navegar con querys: ?mode=view&id=XX
+        this.$router.push({ name: 'product-form', query: { mode: 'view', id: String(id) } });
       },
       editItem(id) {
-        this.$router.push({ name: 'product-edit', params: { id } });
-      },
-      confirmDelete(id) {
-        this.deleteItem(id);
+        // Navegar con querys: ?mode=edit&id=XX
+        this.$router.push({ name: 'product-form', query: { mode: 'edit', id: String(id) } });
       },
 
       async deleteItem(id) {
@@ -164,38 +162,26 @@
         try {
           await axios.delete(`/api/products/${id}/`);
 
-          // Destruir DataTable si está activo
           const table = this.$refs.productTable;
-          if (table && $.fn.dataTable.isDataTable(table)) {
-            $(table).DataTable().destroy();
-          }
+          if (table && $.fn.dataTable?.isDataTable(table)) $(table).DataTable().destroy();
 
-          // Filtrar el producto eliminado
           this.items = this.items.filter(item => item.id !== id);
 
-          // Reiniciar DataTable
           this.$nextTick(() => {
             if (this.items.length && this.$refs.productTable) {
               $(this.$refs.productTable).DataTable({
                 responsive: true,
                 pageLength: 50,
                 order: [[0, 'desc']],
-                language: {
-                  search: 'Search:',
-                },
+                language: { search: 'Search:' },
               });
             }
           });
 
-          // Mostrar notificación
-          this.notifyToastSuccess('The product has been deleted.');
+          this.notifyToastSuccess?.('The product has been deleted.');
         } catch (err) {
           console.error('Delete failed:', err);
-          Swal.fire({
-            title: 'Error',
-            text: 'There was a problem deleting the product.',
-            icon: 'error',
-          });
+          Swal.fire({ title: 'Error', text: 'There was a problem deleting the product.', icon: 'error' });
         }
       },
     },

@@ -38,6 +38,15 @@ const UnitOfMeasureView = () => import('@views/inventory/UnitOfMeasureView.vue')
 const UnitCategoryView = () => import('@views/inventory/UnitCategoryView.vue');
 const PriceTypeView = () => import('@views/inventory/PriceTypeView.vue');
 const ProductListView = () => import('@views/inventory/ProductListView.vue');
+const InventoryDashboardView = () => import('@views/inventory/InventoryDashboardView.vue');
+
+// Parties (Builder, Job, House Model)
+const BuilderView = () => import('@views/parties/BuilderView.vue');
+const BuilderFormView = () => import('@views/parties/BuilderFormView.vue');
+const JobView = () => import('@views/parties/JobView.vue');
+const JobFormView = () => import('@views/parties/JobFormView.vue');
+const HouseModelView = () => import('@views/parties/HouseModelView.vue');
+const HouseModelFormView = () => import('@views/parties/HouseModelFormView.vue');
 
 // Transactions
 const DocTypeListView = () => import('@views/transactions/DocTypeListView.vue');
@@ -48,6 +57,10 @@ const PartyCategoryListView = () => import('@views/transactions/PartyCategoryLis
 const PartyCategoryForm = () => import('@components/transactions/PartyCategoryForm.vue');
 const PartyForm = () => import('@components/transactions/PartyForm.vue');
 const PartyListView = () => import('@views/transactions/PartyListView.vue');
+const TransactionForm = () => import('@components/transactions/TransactionForm.vue');
+const TransactionListView = () => import('@views/transactions/TransactionListView.vue');
+const WorkAccountSelect = () => import('@components/transactions/WorkAccountSelect.vue');
+const WorkAccountListView = () => import('@views/transactions/WorkAccountListView.vue');
 
 
 // ───────────────────────────────────────────────────────────
@@ -183,6 +196,12 @@ const routes = [
   // INVENTORY MODULE                                        
   // ───────────────────────────────────────────────────────────
   {
+    path: '/inventory-dashboard',
+    name: 'inventory-dashboard',
+    component: InventoryDashboardView,
+    meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_product'] },
+  },
+  {
     path: '/warehouses',
     name: 'warehouses',
     component: WarehouseListView,
@@ -213,7 +232,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_productcategory'] },
   },
   {
-    path: '/admin/product-category/form',
+    path: '/product-category/form',
     name: 'product-category-form',
     component: DynamicForm,
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.add_productcategory'] },
@@ -227,7 +246,7 @@ const routes = [
     }),
   },
   {
-    path: '/admin/product-category/view/:id',
+    path: '/product-category/view/:id',
     name: 'product-category-view',
     component: DynamicForm,
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_productcategory'] },
@@ -240,7 +259,7 @@ const routes = [
     }),
   },
   {
-    path: '/admin/product-category/edit/:id',
+    path: '/product-category/edit/:id',
     name: 'product-category-edit',
     component: DynamicForm,
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.change_productcategory'] },
@@ -260,7 +279,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_productbrand'] },
   },
   {
-    path: '/admin/product-brand/form',
+    path: '/product-brand/form',
     name: 'product-brand-form',
     component: DynamicForm,
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.add_productbrand'] },
@@ -274,7 +293,7 @@ const routes = [
     },
   },
   {
-    path: '/admin/product-brand/edit/:id',
+    path: '/product-brand/edit/:id',
     name: 'product-brand-edit',
     component: DynamicForm,
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.change_productbrand'] },
@@ -288,7 +307,7 @@ const routes = [
     }),
   },
   {
-    path: '/admin/product-brand/view/:id',
+    path: '/product-brand/view/:id',
     name: 'product-brand-view',
     component: DynamicForm,
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_productbrand'] },
@@ -301,53 +320,6 @@ const routes = [
       redirectAfterSave: '/product-brands',
     }),
   },
-  // {
-  //   path: '/product-units',
-  //   name: 'product-units',
-  //   component: ProductUnitView,
-  //   meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_productunit'] },
-  // },
-  // {
-  //   path: '/admin/product-unit/form',
-  //   name: 'product-unit-form',
-  //   component: DynamicForm,
-  //   meta: { requiresAuth: true, requiredPermissions: ['appinventory.add_productunit'] },
-  //   props: {
-  //     schemaEndpoint: '/api/schema/productunit/',
-  //     apiEndpoint: '/api/productunit/',
-  //     formTitle: 'Create Product Unit',
-  //     redirectAfterSave: '/product-units',
-  //     readOnly: false,
-  //   },
-  // },
-  // {
-  //   path: '/admin/product-unit/view/:id',
-  //   name: 'product-unit-view',
-  //   component: DynamicForm,
-  //   meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_productunit'] },
-  //   props: route => ({
-  //     schemaEndpoint: '/api/schema/productunit/',
-  //     apiEndpoint: '/api/productunit/',
-  //     objectId: route.params.id,
-  //     formTitle: 'View Product Unit',
-  //     redirectAfterSave: '/product-units',
-  //     readOnly: true,
-  //   }),
-  // },
-  {
-    path: '/admin/product-unit/edit/:id',
-    name: 'product-unit-edit',
-    component: DynamicForm,
-    meta: { requiresAuth: true, requiredPermissions: ['appinventory.change_productunit'] },
-    props: route => ({
-      schemaEndpoint: '/api/schema/productunit/',
-      apiEndpoint: '/api/productunit/',
-      objectId: route.params.id,
-      formTitle: 'Edit Product Unit',
-      redirectAfterSave: '/product-units',
-      readOnly: false,
-    }),
-  },
   {
     path: '/unit-measures',
     name: 'unit-measures',
@@ -355,7 +327,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_unitofmeasure'] },
   },
   {
-    path: '/admin/unit-measure/form',
+    path: '/unit-measure/form',
     name: 'unit-measure-form',
     component: DynamicForm,
     props: {
@@ -368,7 +340,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.add_unitofmeasure'] },
   },
   {
-    path: '/admin/unit-measure/view/:id',
+    path: '/unit-measure/view/:id',
     name: 'unit-measure-view',
     component: DynamicForm,
     props: route => ({
@@ -382,7 +354,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_unitofmeasure'] },
   },
   {
-    path: '/admin/unit-measure/edit/:id',
+    path: '/unit-measure/edit/:id',
     name: 'unit-measure-edit',
     component: DynamicForm,
     props: route => ({
@@ -402,7 +374,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_unitcategory'] },
   },
   {
-    path: '/admin/unit-category/form',
+    path: '/unit-category/form',
     name: 'unit-category-form',
     component: DynamicForm,
     props: {
@@ -415,7 +387,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.add_unitcategory'] },
   },
   {
-    path: '/admin/unit-category/view/:id',
+    path: '/unit-category/view/:id',
     name: 'unit-category-view',
     component: DynamicForm,
     props: route => ({
@@ -429,7 +401,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_unitcategory'] },
   },
   {
-    path: '/admin/unit-category/edit/:id',
+    path: '/unit-category/edit/:id',
     name: 'unit-category-edit',
     component: DynamicForm,
     props: route => ({
@@ -449,7 +421,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_pricetype'] },
   },
   {
-    path: '/admin/price-type/form',
+    path: '/price-type/form',
     name: 'price-type-form',
     component: DynamicForm,
     props: {
@@ -462,7 +434,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.add_pricetype'] },
   },
   {
-    path: '/admin/price-type/view/:id',
+    path: '/price-type/view/:id',
     name: 'price-type-view',
     component: DynamicForm,
     props: route => ({
@@ -476,7 +448,7 @@ const routes = [
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.view_pricetype'] },
   },
   {
-    path: '/admin/price-type/edit/:id',
+    path: '/price-type/edit/:id',
     name: 'price-type-edit',
     component: DynamicForm,
     props: route => ({
@@ -516,6 +488,88 @@ const routes = [
     component: ProductForm,
     props: route => ({ objectId: route.params.id }), // también aquí 
     meta: { requiresAuth: true, requiredPermissions: ['appinventory.change_product'] },
+  },
+
+  // ───────────────────────────────────────────────────────────
+  // PARTIES MODULE (Builder, Job, House Model)                 
+  // ───────────────────────────────────────────────────────────
+
+  // Builder routes
+  {
+    path: '/builders',
+    name: 'builder-list',
+    component: BuilderView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.view_builder'] },
+  },
+  {
+    path: '/builder/form',
+    name: 'builder-form',
+    component: BuilderFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.add_builder'] },
+  },
+  {
+    path: '/builder/view/:id',
+    name: 'builder-view',
+    component: BuilderFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.view_builder'] },
+  },
+  {
+    path: '/builder/edit/:id',
+    name: 'builder-edit',
+    component: BuilderFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.change_builder'] },
+  },
+
+  // Job routes
+  {
+    path: '/jobs',
+    name: 'job-list',
+    component: JobView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.view_job'] },
+  },
+  {
+    path: '/job/form',
+    name: 'job-form',
+    component: JobFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.add_job'] },
+  },
+  {
+    path: '/job/view/:id',
+    name: 'job-view',
+    component: JobFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.view_job'] },
+  },
+  {
+    path: '/job/edit/:id',
+    name: 'job-edit',
+    component: JobFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.change_job'] },
+  },
+
+  // House Model routes
+  {
+    path: '/house-models',
+    name: 'house-model-list',
+    component: HouseModelView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.view_housemodel'] },
+  },
+  {
+    path: '/house-model/form',
+    name: 'house-model-form',
+    component: HouseModelFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.add_housemodel'] },
+  },
+  {
+    path: '/house-model/view/:id',
+    name: 'house-model-view',
+    component: HouseModelFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.view_housemodel'] },
+  },
+  {
+    path: '/house-model/edit/:id',
+    name: 'house-model-edit',
+    component: HouseModelFormView,
+    meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.change_housemodel'] },
   },
 
   // ───────────────────────────────────────────────────────────
@@ -570,7 +624,31 @@ const routes = [
     component: PartyForm,
     meta: { requiresAuth: true, requiredPermissions: ['apptransactions.add_party'] },
   },
-  
+  {
+    path: '/transactions/form',
+    name: 'transactions-form',
+    component: TransactionForm,
+    meta: { requiresAuth: true, requiredPermissions: ['apptransactions.add_document'] },
+  },
+  {
+    path: '/transactions',
+    name: 'transactions',
+    component: TransactionListView,
+    meta: { requiresAuth: true, requiredPermissions: ['apptransactions.view_document'] },
+  },
+  {
+    path: '/work-accounts',
+    name: 'work-accounts',
+    component: WorkAccountListView,
+    meta: { requiresAuth: true, requiredPermissions: ['apptransactions.view_workaccount'] },
+  },
+  {
+    path: '/work-accounts/form',
+    name: 'work-accounts-form',
+    component: WorkAccountSelect,
+    meta: { requiresAuth: true, requiredPermissions: ['apptransactions.add_workaccount'] },
+  },
+
 ];
 
 

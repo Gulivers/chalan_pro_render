@@ -1,20 +1,20 @@
 <template>
   <div class="container mt-3">
-    <div class="card shadow-sm">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">
+        <!-- Main Title -->
+        <div class="text-center">
+      <h3 class="text-warning">Party Category</h3>
+    </div>
+    <div class="card shadow-sm mx-auto" style="max-width: 720px">
+      <div class="card-header d-flex justify-content-center align-items-center">
+        <h6 class="mb-0 w-100 text-center text-primary">
           {{ isViewMode ? 'View Party Category' : isEditMode ? 'Edit Party Category' : 'New Party Category' }}
-        </h5>
-        <button class="btn btn-outline-secondary" @click="goList">
-          <i class="fas fa-list me-1"></i>
-          Back to list
-        </button>
+        </h6>
       </div>
 
-      <div class="card-body">
+      <div class="card-body text-start">
         <form @submit.prevent="handleSubmit" novalidate>
           <div class="mb-3">
-            <label class="form-label">
+            <label class="form-label mb-2">
               Name
               <span class="text-danger">*</span>
             </label>
@@ -47,7 +47,7 @@
           </div>
 
           <!-- Actions -->
-          <div class="d-flex justify-content-end gap-2">
+          <div class="d-flex justify-content-center gap-2">
             <button type="button" class="btn btn-secondary" :disabled="submitting" @click="goList">
               <i class="fas fa-arrow-left me-1"></i>
               Cancel

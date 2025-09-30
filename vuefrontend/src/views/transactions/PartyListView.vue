@@ -1,5 +1,5 @@
 <template>
-  <TxCard class="shadow-sm mt-4">
+  <TxCard class="shadow-sm mt-0">
     <!-- Header del card -->
     <template #header>
       <div class="d-flex justify-content-between align-items-center w-100">
@@ -111,7 +111,6 @@ import '@/assets/css/base.css'
 
 import { ref, computed, onMounted, getCurrentInstance } from 'vue'
 import axios from 'axios'
-import { BTable, BPagination } from 'bootstrap-vue-next'
 
 const { proxy } = getCurrentInstance()
 
@@ -122,6 +121,7 @@ const perPage = ref(10)
 const currentPage = ref(1)
 
 const fields = [
+  { key: 'id', label: 'ID', sortable: true },
   { key: 'name', label: 'Name', sortable: true },
   { key: 'email', label: 'Email', sortable: true },
   { key: 'phone', label: 'Phone', sortable: true },

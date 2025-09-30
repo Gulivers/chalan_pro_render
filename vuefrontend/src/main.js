@@ -36,6 +36,10 @@ import {dataTableMixin} from '@mixins/dataTableMixin';
 
 import authService from './auth/authService';
 
+// Directivas
+import TooltipDirective from '@/directives/tooltip'
+
+
 
 // Permite que las cookies se envíen con cada solicitud
 axios.defaults.withCredentials = true;
@@ -51,7 +55,8 @@ const app = createApp(App);
 app.use(router);
 const pinia = createPinia();
 app.use(pinia); 
-app.use(store)
+app.use(store);
+app.use(TooltipDirective);
 
 app.component('BTable', BTable)
 app.component('BPagination', BPagination)

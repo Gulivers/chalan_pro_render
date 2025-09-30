@@ -11,7 +11,7 @@
       </div>
       <div class="me-2" v-if="hasPermission('appschedule.view_event')">
         <button class="btn btn-outline-success me-2 btn-sm" @click="downloadScheduleExcel">
-          <img src="@/assets/img/microsoft-excel-icon.svg" alt="Excel" width="20" class="me-1" />
+          <img src="@/assets/img/microsoft-excel-icon.svg" alt="Excel" width="25" class="me-1" />
           Excel Schedule
         </button>
         <button class="btn btn-outline-dark btn-sm" @click="generateSchedulePDF">
@@ -19,8 +19,14 @@
         </button>
       </div>
       <div v-if="hasPermission('appschedule.add_event')">
-        <button class="btn btn-warning me-3 btn-sm" :disabled="!showBntPublishAll" @click="publishAllDrafts">
-          📢 Publish All Drafts
+        <button
+          class="btn btn-warning me-3 btn-sm"
+          :disabled="publishing || !showBntPublishAll"
+          :aria-busy="publishing"
+          :title="publishing ? 'Publishing drafts…' : (showBntPublishAll ? 'Publish all drafts in view' : 'No drafts to publish')"
+          @click="publishAllDrafts">
+          <span v-if="publishing" class="spinner-border spinner-border-sm me-2" role="status"></span>
+          {{ publishing ? 'Publishing...' : '📢 Publish All Drafts' }}
         </button>
       </div>
 
@@ -77,6 +83,7 @@ export default {
         extendedService: false
       },
       userId: null, // _OAHP
+      publishing: false,   // OAHO400
       categoryTotals: [],
       // filteredEvents: [],
       websocket: null,
@@ -153,11 +160,7 @@ export default {
       }
     },
     showBntPublishAll() {
-      return this.events.filter(event => {
-        return (
-            event.extendedProps.event !== undefined
-        );
-      }).length > 0;
+      return this.events.some(e => e?.extendedProps?.event !== undefined)
     },
     calendarOptions(){
       return {
@@ -374,7 +377,7 @@ export default {
         absence_reason: info.event.extendedProps?.absence_reason || null,
         extendedProps: info.event.extendedProps,
         canCreateEvent: this.can_create_event,
-        clickedCrewId: clickedCrewId,
+        clickedCrewId: this.clickedCrewId,
         crewId: this.crewId,
         isCoordinator: this.is_coordinator,
       }, false);
@@ -502,16 +505,49 @@ export default {
       }
     },
 
-    publishAllDrafts() {
+    async publishAllDrafts() {
+      if (!this.showBntPublishAll || this.publishing) return
+      this.publishing = true
+
+      // Watchdog por si la request queda colgada
+      const watchdog = setTimeout(() => {
+        if (this.publishing) {
+          this.publishing = false
+          if (typeof this.notifyToastError === 'function') {
+            this.notifyToastError('Publish timed out after 30s. Please try again.')
+          }
+        }
+      }, 30000)
+
       try {
-        const resp = axios.post('/api/schedule/publish_drafts/',{
-          start_date:this.calendar_start,
-          end_date:this.calendar_end,
-        })
-      }catch (e) {
+        await axios.post(
+          '/api/schedule/publish_drafts/',
+          {
+            start_date: this.calendar_start,
+            end_date: this.calendar_end,
+          },
+          { timeout: 30000 } // ✅ NEW: timeout duro en axios
+        )
+
+        if (typeof this.getEvents === 'function') {
+          await this.getEvents()
+        }
+
+        if (typeof this.notifyToastSuccess === 'function') {
+          this.notifyToastSuccess('Drafts published successfully.')
+        }
+      } catch (e) {
         console.error(e)
+        const msg = e?.response?.data?.error || e?.message || 'Error while publishing drafts.'
+        if (typeof this.notifyToastError === 'function') {
+          this.notifyToastError(msg)
+        }
+      } finally {
+        clearTimeout(watchdog)
+        this.publishing = false
       }
     },
+    
     async generateSchedulePDF() {
       try {
         const url = `/api/schedule-report/?start_at=${this.calendar_start}&end_at=${this.calendar_end}`;
