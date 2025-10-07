@@ -36,6 +36,11 @@ class ProductBrandSchemaView(APIView):
                 "type": "boolean",
                 "label": "Active",
                 "required": False
+            },
+            "is_default": {
+                "type": "boolean",
+                "label": "Default Brand",
+                "required": False
             }
         }
         return Response(schema)

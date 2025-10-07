@@ -8,61 +8,113 @@
     </div>
 
     <div class="card-body">
-      <div v-if="loading" class="text-center py-3">
-        Loading Brands...
-        <div class="spinner-border" role="status"></div>
+      <!-- Loading state -->
+      <div v-if="isBusy" class="text-center py-3">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2">Loading Brands...</div>
       </div>
 
-      <div v-else-if="items.length" class="table-responsive">
-        <table class="table table-striped table-hover table-bordered" id="brandTable" ref="brandTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th v-for="field in headers" :key="field">
-                {{ schema[field]?.label || field }}
-              </th>
-              <th class="text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in items" :key="item.id">
-              <td>{{ item.id }}</td>
-              <td v-for="field in headers" :key="field" class="text-start">
-                <template v-if="typeof item[field] === 'boolean'">
-                  <span :class="['badge', item[field] ? 'bg-success' : 'bg-secondary']">
-                    {{ item[field] ? 'Active' : 'Inactive' }}
-                  </span>
-                </template>
-                <template v-else>
-                  {{ item[field] || '—' }}
-                </template>
-              </td>
-              <td class="text-center">
-                <div class="btn-group btn-group-sm">
-                  <button class="btn btn-outline-success me-1" @click="viewItem(item.id)">View</button>
-                  <button class="btn btn-outline-primary me-1" @click="editItem(item.id)">Edit</button>
-                  <button
-                    class="btn btn-outline-danger"
-                    @click="confirmDelete(item.id)"
-                    :disabled="deletingId === item.id"
-                  >
-                    <span
-                      v-if="deletingId === item.id"
-                      class="spinner-border spinner-border-sm me-1"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    Delete
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Table with Bootstrap Vue Next -->
+      <div v-else-if="items.length > 0" class="table-responsive">
+        <b-table
+          :items="items"
+          :fields="fields"
+          :per-page="perPage"
+          :current-page="currentPage"
+          striped
+          hover
+          responsive
+          :sort-by="sortBy"
+          :sort-desc="sortDesc"
+          @sort-changed="onSortChanged"
+          class="table-bordered"
+        >
+          <!-- ID column -->
+          <template #cell(id)="row">
+            <strong>{{ row.item.id }}</strong>
+          </template>
+
+          <!-- Name column -->
+          <template #cell(name)="row">
+            <div class="text-start">
+              <span class="fw-medium">{{ row.item.name }}</span>
+            </div>
+          </template>
+
+          <!-- Active column -->
+          <template #cell(is_active)="row">
+            <span class="badge" :class="row.item.is_active ? 'bg-success' : 'bg-secondary'">
+              {{ row.item.is_active ? 'Active' : 'Inactive' }}
+            </span>
+          </template>
+
+          <!-- Default column -->
+          <template #cell(is_default)="row">
+            <span class="badge" :class="row.item.is_default ? 'bg-primary' : 'bg-light text-dark'">
+              {{ row.item.is_default ? 'Default' : '—' }}
+            </span>
+          </template>
+
+          <!-- Actions column -->
+          <template #cell(actions)="row">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-success me-1" @click="viewItem(row.item.id)">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn btn-outline-primary me-1" @click="editItem(row.item.id)">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button
+                class="btn btn-outline-danger"
+                @click="confirmDelete(row.item.id)"
+                :disabled="deletingId === row.item.id"
+              >
+                <span
+                  v-if="deletingId === row.item.id"
+                  class="spinner-border spinner-border-sm me-1"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </template>
+        </b-table>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-3">
+          <div class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0 small">Entries per page:</label>
+            <select v-model.number="perPage" class="form-select form-select-sm" style="width: auto;">
+              <option :value="10">10</option>
+              <option :value="25">25</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+            <span class="text-muted small">
+              Showing {{ (currentPage - 1) * perPage + 1 }} to 
+              {{ Math.min(currentPage * perPage, items.length) }} of 
+              {{ items.length }} entries
+            </span>
+          </div>
+          
+          <b-pagination
+            v-model="currentPage"
+            :total-rows="items.length"
+            :per-page="perPage"
+            size="sm"
+            class="mb-0"
+          ></b-pagination>
+        </div>
       </div>
 
-      <div v-else class="text-muted text-center">
-        No brands available.
+      <!-- Empty state -->
+      <div v-else class="text-muted text-center py-5">
+        <i class="fas fa-tags fa-3x mb-3 text-muted"></i>
+        <h5>No brands found</h5>
+        <p class="mb-0">Start by creating your first product brand.</p>
       </div>
     </div>
   </div>
@@ -76,82 +128,74 @@ export default {
   name: 'ProductBrandView',
   data() {
     return {
-      schema: {},
       items: [],
-      headers: [],
-      loading: false,
-      dataTable: null,
+      isBusy: false,
       deletingId: null,
+      
+      // Table configuration
+      perPage: 25,
+      currentPage: 1,
+      sortBy: 'id',
+      sortDesc: true,
+      
+      // Table fields
+      fields: [
+        { key: 'id', label: 'ID', sortable: true, thClass: 'text-center', tdClass: 'text-center' },
+        { key: 'name', label: 'Name', sortable: true, thClass: 'text-start' },
+        { key: 'is_active', label: 'Active', sortable: true, thClass: 'text-center', tdClass: 'text-center' },
+        { key: 'is_default', label: 'Default', sortable: true, thClass: 'text-center', tdClass: 'text-center' },
+        { key: 'actions', label: 'Actions', sortable: false, thClass: 'text-center', tdClass: 'text-center' }
+      ]
     }
   },
   mounted() {
-    this.fetchSchema()
     this.fetchItems()
   },
-  beforeUnmount() {
-    this.destroyDataTable()
-  },
   methods: {
-    fetchSchema() {
-      axios.get('/api/schema/productbrand/')
-        .then(res => {
-          this.schema = res.data || {}
-          this.headers = Object.keys(this.schema)
-        })
-        .catch(err => {
-          console.error('Error fetching schema:', err)
-        })
-    },
-    fetchItems() {
-      this.loading = true
-      axios.get('/api/productbrand/')
-        .then(res => {
-          this.items = res.data
-          this.loading = false
-          setTimeout(() => {
-            if (this.items.length && this.$refs.brandTable) {
-              this.initDataTable()
-            }
-          }, 100)
-        })
-        .catch(err => {
-          this.loading = false
-          console.error('Error loading brands:', err)
-        })
-    },
-    destroyDataTable() {
-      if (this.dataTable && $.fn.dataTable && $.fn.dataTable.isDataTable(this.$refs.brandTable)) {
-        try {
-          this.dataTable.destroy()
-          this.dataTable = null
-        } catch (error) {
-          console.warn('Error destroying DataTable:', error)
-        }
-      }
-    },
-    initDataTable() {
-      const table = this.$refs.brandTable
-      if (!table || !$.fn.dataTable) return
-
+    async fetchItems() {
+      this.isBusy = true
       try {
-        this.destroyDataTable()
-        this.dataTable = $(table).DataTable({
-          destroy: true,
-          responsive: true,
-          pageLength: 50,
-          order: [[0, 'desc']],
-          language: { search: 'Search:' },
-        })
+        const response = await axios.get('/api/productbrand/')
+        this.items = Array.isArray(response.data) ? response.data : []
       } catch (error) {
-        console.error('Error initializing DataTable:', error)
+        console.error('Error loading brands:', error)
+        this.items = []
+      } finally {
+        this.isBusy = false
       }
     },
+
+    onSortChanged(ctx) {
+      this.sortBy = ctx.sortBy
+      this.sortDesc = ctx.sortDesc
+      
+      // Apply sorting directly to items
+      this.items.sort((a, b) => {
+        let aVal = a[this.sortBy]
+        let bVal = b[this.sortBy]
+        
+        // Handle null/undefined values
+        if (aVal == null) aVal = ''
+        if (bVal == null) bVal = ''
+        
+        // Convert to string for comparison
+        aVal = String(aVal).toLowerCase()
+        bVal = String(bVal).toLowerCase()
+        
+        if (aVal < bVal) return this.sortDesc ? 1 : -1
+        if (aVal > bVal) return this.sortDesc ? -1 : 1
+        return 0
+      })
+    },
+
     goToCreateForm() {
       this.$router.push({ name: 'product-brand-form' })
     },
+
     viewItem(id) {
       this.$router.push({ name: 'product-brand-view', params: { id } })
     },
+
     editItem(id) {
       this.$router.push({ name: 'product-brand-edit', params: { id } })
     },
@@ -173,23 +217,18 @@ export default {
       this.deletingId = id
       try {
         await axios.delete(`/api/productbrand/${id}/`)
-        // refrescar tabla
-        this.destroyDataTable()
+        
+        // Remove item from local array
         this.items = this.items.filter(b => b.id !== id)
-        setTimeout(() => {
-          if (this.items.length && this.$refs.brandTable) {
-            this.initDataTable()
-          }
-        }, 50)
-
-        // toast de éxito (patrón)
+        
+        // Show success message
         if (this.notifyToastSuccess) {
           this.notifyToastSuccess('The product brand has been deleted.')
         }
       } catch (error) {
         console.error('Error deleting product brand:', error)
         const { status } = error?.response || {}
-        // (Tu interceptor ya maneja 409 in_use con Swal. Dejas este genérico adicional por ahora.)
+        
         if (status === 403) {
           await Swal.fire('Forbidden', 'You do not have permission for this action.', 'error')
         } else {
@@ -202,3 +241,24 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.table td { vertical-align: middle; }
+.badge.fs-6 { font-size: 0.875rem !important; padding: 0.5rem 0.75rem; }
+:deep(.b-table) { font-size: 0.9rem; }
+:deep(.b-table th) { background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #495057; }
+:deep(.b-table td) { border-bottom: 1px solid #dee2e6; }
+:deep(.b-table tbody tr:hover) { background-color: #f8f9fa; }
+:deep(.b-pagination .page-link) { color: #007bff; border-color: #dee2e6; }
+:deep(.b-pagination .page-item.active .page-link) { background-color: #007bff; border-color: #007bff; }
+.spinner-border { width: 3rem; height: 3rem; }
+.btn-group-sm .btn { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+.fa-tags { opacity: 0.3; }
+@media (max-width: 768px) {
+  .badge.fs-6 { font-size: 0.75rem !important; padding: 0.375rem 0.5rem; }
+  :deep(.b-table) { font-size: 0.8rem; }
+  .btn-group-sm .btn { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+}
+.form-select-sm { font-size: 0.875rem; padding: 0.25rem 0.5rem; }
+.text-muted.small { font-size: 0.8rem; }
+</style>

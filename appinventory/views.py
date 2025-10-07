@@ -1,6 +1,7 @@
 # Django core
 from django.views.generic import TemplateView
-from django.db.models import F, Sum, OuterRef, Subquery, Count, Max
+from django.db import models
+from django.db.models import F, Sum, OuterRef, Subquery, Count, Max, Q
 from django.db.models.deletion import ProtectedError
 from django.db import IntegrityError
 from django.http import HttpResponse
@@ -148,7 +149,7 @@ class ProductBrandViewSet(viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['is_active']
+    filterset_fields = ['is_active', 'is_default']
     
 class PriceTypeViewSet(viewsets.ModelViewSet):
     queryset = PriceType.objects.all()
@@ -163,7 +164,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated, DjangoModelPermissions]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['is_active', 'category', 'brand']
+    filterset_fields = ['is_active', 'category', 'brands']
     search_fields = ['name', 'sku']
     ordering_fields = ['name', 'sku', 'created_at']
     ordering = ['name']
@@ -212,13 +213,203 @@ class ProductDataTableAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        queryset = Product.objects.select_related('category', 'brand', 'unit_default')
+        queryset = Product.objects.select_related('category', 'unit_default').prefetch_related('brands')
         return handle_datatable_query(
             request,
             queryset,
             ProductListSerializer,
             search_fields=['name', 'sku']
         )
+
+class ProductListProviderAPIView(APIView):
+    """
+    Endpoint para provider pattern con server-side pagination, filtering y sorting
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Parámetros de paginación
+            page = int(request.query_params.get('page', 1))
+            per_page = int(request.query_params.get('per_page', 25))
+            
+            # Parámetros de filtrado
+            is_active = request.query_params.get('is_active')
+            search = request.query_params.get('search', '').strip()
+            ordering = request.query_params.get('ordering', '-id')  # Descendente por ID
+            
+            # Construir queryset base
+            queryset = Product.objects.select_related('category', 'unit_default').prefetch_related('brands')
+            
+            # Aplicar filtros
+            if is_active is not None:
+                if is_active.lower() == 'true':
+                    queryset = queryset.filter(is_active=True)
+                elif is_active.lower() == 'false':
+                    queryset = queryset.filter(is_active=False)
+            
+            # Aplicar búsqueda
+            if search:
+                queryset = queryset.filter(
+                    Q(name__icontains=search) |
+                    Q(sku__icontains=search) |
+                    Q(category__name__icontains=search)
+                )
+            
+            # Aplicar ordenamiento
+            queryset = queryset.order_by(ordering)
+            
+            # Calcular totales para estadísticas
+            total_count = queryset.count()
+            active_count = queryset.filter(is_active=True).count()
+            inactive_count = queryset.filter(is_active=False).count()
+            
+            # Aplicar paginación
+            start = (page - 1) * per_page
+            end = start + per_page
+            paginated_queryset = queryset[start:end]
+            
+            # Serializar datos
+            serializer = ProductListSerializer(paginated_queryset, many=True)
+            
+            return Response({
+                'items': serializer.data,
+                'totalRows': total_count,
+                'stats': {
+                    'total': total_count,
+                    'active': active_count,
+                    'inactive': inactive_count
+                }
+            })
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+
+class ProductListDirectAPIView(APIView):
+    """
+    Endpoint que devuelve productos como array directo (sin paginación)
+    para compatibilidad con frontend que espera array directo
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Parámetros de filtrado
+            is_active = request.query_params.get('is_active')
+            search = request.query_params.get('search', '').strip()
+            #ordering = request.query_params.get('ordering', 'id')
+            ordering = request.query_params.get('ordering', '-id')  # Descendente por ID
+            
+            # Construir queryset
+            queryset = Product.objects.select_related('category', 'unit_default').prefetch_related('brands')
+            
+            # Aplicar filtros
+            if is_active is not None:
+                if is_active.lower() == 'true':
+                    queryset = queryset.filter(is_active=True)
+                elif is_active.lower() == 'false':
+                    queryset = queryset.filter(is_active=False)
+            
+            # Aplicar búsqueda
+            if search:
+                queryset = queryset.filter(
+                    Q(name__icontains=search) |
+                    Q(sku__icontains=search) |
+                    Q(category__name__icontains=search)
+                )
+            
+            # Aplicar ordenamiento
+            queryset = queryset.order_by(ordering)
+            
+            
+            # Serializar datos
+            serializer = ProductListSerializer(queryset, many=True)
+            
+            # Calcular estadísticas
+            total_count = queryset.count()
+            active_count = queryset.filter(is_active=True).count()
+            inactive_count = queryset.filter(is_active=False).count()
+            
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class ProductBrandsListAPIView(APIView):
+    """
+    Endpoint para obtener las marcas disponibles para un producto específico
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, product_id):
+        try:
+            product = Product.objects.get(id=product_id)
+            
+            # Obtener todas las marcas del producto con información de default
+            brands_data = []
+            default_brand = product.get_default_brand()
+            
+            for brand in product.brands.filter(is_active=True):
+                brands_data.append({
+                    'id': brand.id,
+                    'name': brand.name,
+                    'is_default': brand == default_brand
+                })
+            
+            return Response({
+                'brands': brands_data,
+                'default_brand': {
+                    'id': default_brand.id if default_brand else None,
+                    'name': default_brand.name if default_brand else None
+                }
+            })
+                
+        except Product.DoesNotExist:
+            return Response({'error': 'Producto no encontrado'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+class ProductBrandsUpdateAPIView(APIView):
+    """
+    Endpoint para actualizar las marcas de un producto
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, product_id):
+        try:
+            product = Product.objects.get(id=product_id)
+            brands_data = request.data.get('brands', [])
+            
+            # Validar que se proporcione al menos una marca
+            if not brands_data:
+                return Response({
+                    'error': 'El producto debe tener al menos una marca asignada.'
+                }, status=400)
+            
+            # Actualizar marcas
+            brands = ProductBrand.objects.filter(id__in=brands_data)
+            if brands.count() != len(brands_data):
+                return Response({
+                    'error': 'Una o más marcas no existen.'
+                }, status=400)
+            
+            product.brands.set(brands)
+            product.ensure_default_brand()
+            
+            return Response({
+                'message': 'Marcas actualizadas exitosamente',
+                'success': True
+            })
+                
+        except Product.DoesNotExist:
+            return Response({'error': 'Producto no encontrado'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 class ProductDefaultPriceAPIView(APIView):
     """
@@ -229,7 +420,24 @@ class ProductDefaultPriceAPIView(APIView):
 
     def get(self, request, product_id):
         try:
+            # Permitir filtrar por brand_id si se especifica
+            brand_id = request.query_params.get('brand_id')
+            
             product = Product.objects.get(id=product_id)
+            
+            # Obtener marca default del producto
+            default_brand = product.get_default_brand()
+            requested_brand = None
+            
+            # Si se especifica brand_id, encontrar la marca solicitada
+            if brand_id:
+                try:
+                    requested_brand = product.brands.get(id=brand_id, is_active=True)
+                except ProductBrand.DoesNotExist:
+                    pass
+            
+            # Usar la marca solicitada o la default
+            brand_to_use = requested_brand or default_brand
             
             # Buscar el precio predeterminado
             default_price = product.prices.filter(is_default=True, is_active=True).first()
@@ -242,11 +450,15 @@ class ProductDefaultPriceAPIView(APIView):
                 return Response({
                     'unit': default_price.unit.id,
                     'unit_name': default_price.unit.name,
-                    'unit_price': float(default_price.price),
+                    'unit_price': default_price.price,
                     'price_type': default_price.price_type.id,
                     'price_type_name': default_price.price_type.name,
-                    'brand': product.brand.id if product.brand else None,
-                    'brand_name': product.brand.name if product.brand else None,
+                    'brand': brand_to_use.id if brand_to_use else None,
+                    'brand_name': brand_to_use.name if brand_to_use else None,
+                    'default_brand': {
+                        'id': default_brand.id if default_brand else None,
+                        'name': default_brand.name if default_brand else None
+                    }
                 })
             else:
                 return Response({
@@ -255,8 +467,12 @@ class ProductDefaultPriceAPIView(APIView):
                     'unit_price': 0,
                     'price_type': None,
                     'price_type_name': None,
-                    'brand': product.brand.id if product.brand else None,
-                    'brand_name': product.brand.name if product.brand else None,
+                    'brand': brand_to_use.id if brand_to_use else None,
+                    'brand_name': brand_to_use.name if brand_to_use else None,
+                    'default_brand': {
+                        'id': default_brand.id if default_brand else None,
+                        'name': default_brand.name if default_brand else None
+                    }
                 })
                 
         except Product.DoesNotExist:
@@ -518,7 +734,7 @@ class LowStockProductsAPIView(APIView):
                 )
             ).filter(
                 total_stock__lt=F('reorder_level')
-            ).select_related('category', 'brand').order_by('total_stock')
+            ).select_related('category').prefetch_related('brands').order_by('total_stock')
             
             result = []
             for product in low_stock_products:
@@ -534,8 +750,8 @@ class LowStockProductsAPIView(APIView):
                         'name': product.category.name if product.category else None
                     },
                     'brand': {
-                        'id': product.brand.id if product.brand else None,
-                        'name': product.brand.name if product.brand else None
+                        'id': product.get_default_brand().id if product.get_default_brand() else None,
+                        'name': product.get_default_brand().name if product.get_default_brand() else None
                     },
                     'current_stock': product.total_stock or 0,
                     'reorder_level': product.reorder_level,
@@ -571,7 +787,7 @@ class LowestStockProductsAPIView(APIView):
                 )
             ).filter(
                 total_stock__isnull=False
-            ).select_related('category', 'brand').order_by('total_stock')[:25]
+            ).select_related('category').prefetch_related('brands').order_by('total_stock')[:25]
             
             result = []
             for product in lowest_stock_products:
@@ -587,8 +803,8 @@ class LowestStockProductsAPIView(APIView):
                         'name': product.category.name if product.category else None
                     },
                     'brand': {
-                        'id': product.brand.id if product.brand else None,
-                        'name': product.brand.name if product.brand else None
+                        'id': product.get_default_brand().id if product.get_default_brand() else None,
+                        'name': product.get_default_brand().name if product.get_default_brand() else None
                     },
                     'current_stock': product.total_stock or 0,
                     'reorder_level': product.reorder_level,
@@ -1334,7 +1550,7 @@ class StockByWarehouseExportAPIView(APIView):
             
             # Obtener datos de stock por almacén
             from .models import Stock, Warehouse
-            stock_data = Stock.objects.select_related('product', 'warehouse', 'product__category', 'product__brand').all()
+            stock_data = Stock.objects.select_related('product', 'warehouse', 'product__category').prefetch_related('product__brands').all()
             
             row = 2
             for stock in stock_data:
@@ -1353,7 +1569,7 @@ class StockByWarehouseExportAPIView(APIView):
                     product.name,
                     product.sku,
                     product.category.name if product.category else 'N/A',
-                    product.brand.name if product.brand else 'N/A',
+                    product.get_default_brand().name if product.get_default_brand() else 'N/A',
                     stock.quantity,
                     product.reorder_level,
                     status,
@@ -1426,7 +1642,7 @@ class CompleteStockExportAPIView(APIView):
                     .annotate(qty=Sum('quantity'))
                     .values('qty')[:1]
                 )
-            ).select_related('category', 'brand').order_by('name')
+            ).select_related('category').prefetch_related('brands').order_by('name')
             
             row = 2
             for product in products:
@@ -1441,7 +1657,7 @@ class CompleteStockExportAPIView(APIView):
                     product.name,
                     product.sku,
                     product.category.name if product.category else 'N/A',
-                    product.brand.name if product.brand else 'N/A',
+                    product.get_default_brand().name if product.get_default_brand() else 'N/A',
                     product.total_stock or 0,
                     product.reorder_level,
                     status,
@@ -1518,7 +1734,7 @@ class LowStockProductsExportAPIView(APIView):
                 )
             ).filter(
                 total_stock__lt=F('reorder_level')
-            ).select_related('category', 'brand').order_by('total_stock')
+            ).select_related('category').prefetch_related('brands').order_by('total_stock')
             
             row = 2
             for product in low_stock_products:
@@ -1534,7 +1750,7 @@ class LowStockProductsExportAPIView(APIView):
                     product.name,
                     product.sku,
                     product.category.name if product.category else 'N/A',
-                    product.brand.name if product.brand else 'N/A',
+                    product.get_default_brand().name if product.get_default_brand() else 'N/A',
                     product.total_stock or 0,
                     product.reorder_level,
                     stock_difference,
@@ -1610,7 +1826,7 @@ class StockReportExportAPIView(APIView):
                     .annotate(qty=Sum('quantity'))
                     .values('qty')[:1]
                 )
-            ).select_related('category', 'brand').order_by('name')
+            ).select_related('category').prefetch_related('brands').order_by('name')
             
             row = 2
             for product in products:
@@ -1625,7 +1841,7 @@ class StockReportExportAPIView(APIView):
                     product.name,
                     product.sku,
                     product.category.name if product.category else 'N/A',
-                    product.brand.name if product.brand else 'N/A',
+                    product.get_default_brand().name if product.get_default_brand() else 'N/A',
                     product.total_stock or 0,
                     product.reorder_level,
                     status,

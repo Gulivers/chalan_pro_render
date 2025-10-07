@@ -1,7 +1,18 @@
 <template>
   <div class="price-unit-settings-section">
     <h5 class="mb-3">Price and Unit Settings</h5>
-    <div class="table-responsive" style="min-height: 300px;">
+    <div class="table-responsive" style="min-height: 350px">
+      <div class="d-flex justify-content-start">
+        <button
+      type="button"
+      class="btn btn-outline-primary btn-sm mt-3 mb-3"
+      @click="addRow"
+      :disabled="readonly"
+      v-tt
+      data-title="Add a new price row">
+      + Add Row
+    </button>
+      </div>
       <table class="table table-bordered align-middle">
         <thead>
           <tr>
@@ -32,16 +43,14 @@
                   :disabled="readonly"
                   @open="$emit('refresh-priceTypes')"
                   v-tt
-                  data-title="Required. Choose the price policy (e.g., Contractors, Wholesale, Counter)."
-                />
+                  data-title="Required. Choose the price policy (e.g., Contractors, Wholesale, Counter)." />
                 <button
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
                   @click="openModal('priceType')"
                   :disabled="readonly"
                   v-tt
-                  data-title="Add a new price type"
-                >
+                  data-title="Add a new price type">
                   <img src="@assets/img/icon-addlink.svg" alt="Add" width="15" height="15" />
                 </button>
                 <button
@@ -51,8 +60,7 @@
                   @click="editModal('priceType', row.price_type)"
                   :disabled="readonly"
                   v-tt
-                  data-title="Edit selected price type"
-                >
+                  data-title="Edit selected price type">
                   <img src="@assets/img/icon-changelink.svg" alt="Edit" width="15" height="15" />
                 </button>
               </div>
@@ -71,16 +79,14 @@
                   :disabled="readonly"
                   @open="$emit('refresh-units')"
                   v-tt
-                  data-title="Required. Unit of measure for this price (e.g., EA, Box, Pair)."
-                />
+                  data-title="Required. Unit of measure for this price (e.g., EA, Box, Pair)." />
                 <button
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
                   @click="openModal('unit')"
                   :disabled="readonly"
                   v-tt
-                  data-title="Add a new unit"
-                >
+                  data-title="Add a new unit">
                   <img src="@assets/img/icon-addlink.svg" alt="Add" width="15" height="15" />
                 </button>
                 <button
@@ -90,8 +96,7 @@
                   @click="editModal('unit', row.unit)"
                   :disabled="readonly"
                   v-tt
-                  data-title="Edit selected unit"
-                >
+                  data-title="Edit selected unit">
                   <img src="@assets/img/icon-changelink.svg" alt="Edit" width="15" height="15" />
                 </button>
               </div>
@@ -105,8 +110,7 @@
                 class="form-check-input"
                 :disabled="readonly"
                 v-tt
-                data-title="Check if this price applies to purchasing costs."
-              />
+                data-title="Check if this price applies to purchasing costs." />
             </td>
 
             <!-- Sale -->
@@ -117,8 +121,7 @@
                 class="form-check-input"
                 :disabled="readonly"
                 v-tt
-                data-title="Check if this price is used for sales."
-              />
+                data-title="Check if this price is used for sales." />
             </td>
 
             <!-- Price -->
@@ -131,8 +134,7 @@
                 :disabled="readonly"
                 placeholder="Enter price"
                 v-tt
-                data-title="Numeric amount (non‑negative)."
-              />
+                data-title="Numeric amount (non‑negative)." />
             </td>
 
             <!-- Default -->
@@ -145,8 +147,7 @@
                 :disabled="readonly"
                 @change="setDefault(index)"
                 v-tt
-                data-title="Marks the primary price row. One default is recommended."
-              />
+                data-title="Marks the primary price row. One default is recommended." />
             </td>
 
             <!-- Dates -->
@@ -157,8 +158,7 @@
                 class="form-control"
                 :disabled="readonly"
                 v-tt
-                data-title="Start date of price validity (optional)."
-              />
+                data-title="Start date of price validity (optional)." />
             </td>
             <td>
               <input
@@ -167,8 +167,7 @@
                 class="form-control"
                 :disabled="readonly"
                 v-tt
-                data-title="End date of price validity (optional)."
-              />
+                data-title="End date of price validity (optional)." />
             </td>
 
             <!-- Active -->
@@ -179,8 +178,7 @@
                 class="form-check-input"
                 :disabled="readonly"
                 v-tt
-                data-title="Enable/disable this price row."
-              />
+                data-title="Enable/disable this price row." />
             </td>
 
             <!-- Delete -->
@@ -190,22 +188,14 @@
                 @click="removeRow(index)"
                 :disabled="readonly"
                 v-tt
-                data-title="Remove this row (changes apply after Save)."
-              >❌</button>
+                data-title="Remove this row (changes apply after Save).">
+                ❌
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-
-    <button
-      type="button"
-      class="btn btn-outline-primary btn-sm mt-3 mb-3"
-      @click="addRow"
-      :disabled="readonly"
-      v-tt
-      data-title="Add a new price row"
-    >+ Add Row</button>
   </div>
 </template>
 
@@ -226,8 +216,12 @@
 
     computed: {
       priceUnitRows: {
-        get() { return this.modelValue; },
-        set(newVal) { this.$emit('update:modelValue', newVal); },
+        get() {
+          return this.modelValue;
+        },
+        set(newVal) {
+          this.$emit('update:modelValue', newVal);
+        },
       },
     },
 
@@ -246,17 +240,20 @@
 
     methods: {
       addRow(prefill = null) {
-        const row = Object.assign({
-          price_type: '',
-          unit: '',
-          is_purchase: false,
-          is_sale: false,
-          price: '',
-          is_default: false,
-          valid_from: '',
-          valid_until: '',
-          is_active: true,
-        }, prefill || {});
+        const row = Object.assign(
+          {
+            price_type: '',
+            unit: '',
+            is_purchase: false,
+            is_sale: false,
+            price: '',
+            is_default: false,
+            valid_from: '',
+            valid_until: '',
+            is_active: true,
+          },
+          prefill || {}
+        );
         // push directly is fine here because parent passes an array reference via v-model
         this.priceUnitRows.push(row);
       },
@@ -264,44 +261,50 @@
         this.priceUnitRows.splice(index, 1);
       },
       setDefault(index) {
-        this.priceUnitRows.forEach((row, i) => { row.is_default = i === index; });
+        this.priceUnitRows.forEach((row, i) => {
+          row.is_default = i === index;
+        });
       },
-      openModal(type) { this.$emit('open-modal', type); },
-      editModal(type, id) { if (id) this.$emit('edit-modal', { type, id }); },
+      openModal(type) {
+        this.$emit('open-modal', type);
+      },
+      editModal(type, id) {
+        if (id) this.$emit('edit-modal', { type, id });
+      },
     },
   };
 </script>
 
 <style scoped>
-.price-unit-settings-section {
-  padding: 20px 0;
-  min-height: 500px;
-}
+  .price-unit-settings-section {
+    padding: 20px 0;
+    min-height: 500px;
+  }
 
-.table-responsive {
-  border: 1px solid #dee2e6;
-  border-radius: 0.375rem;
-  padding: 15px;
-  background-color: #f8f9fa;
-}
+  .table-responsive {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 15px;
+    background-color: #f8f9fa;
+  }
 
-.table {
-  margin-bottom: 0;
-}
+  .table {
+    margin-bottom: 0;
+  }
 
-.table th {
-  background-color: #e9ecef;
-  border-bottom: 2px solid #dee2e6;
-  font-weight: 600;
-  padding: 12px 8px;
-}
+  .table th {
+    background-color: #e9ecef;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    padding: 12px 8px;
+  }
 
-.table td {
-  padding: 12px 8px;
-  vertical-align: middle;
-}
+  .table td {
+    padding: 12px 8px;
+    vertical-align: middle;
+  }
 
-.btn-outline-primary {
-  margin-top: 15px;
-}
+  .btn-outline-primary {
+    margin-top: 15px;
+  }
 </style>

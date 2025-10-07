@@ -11,10 +11,10 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **kwargs):
-        self.stdout.write("🧹 Clearing current stock levels...")
+        self.stdout.write("[INFO] Clearing current stock levels...")
         Stock.objects.all().delete()
 
-        self.stdout.write("🔁 Recalculating stock from document lines...")
+        self.stdout.write("[INFO] Recalculating stock from document lines...")
         count = 0
 
         lines = DocumentLine.objects.select_related(
@@ -42,7 +42,7 @@ class Command(BaseCommand):
             count += 1
 
             self.stdout.write(
-                f"📦 Product: {line.product.name} | Warehouse: {warehouse.name} | type: { stock_movement } | Qty: {converted_qty:.2f} -> Total: {stock.quantity:.2f}"
+                f"[INFO] Product: {line.product.name} | Warehouse: {warehouse.name} | type: { stock_movement } | Qty: {converted_qty:.2f} -> Total: {stock.quantity:.2f}"
             )
 
-        self.stdout.write(self.style.SUCCESS(f"✅ Stock successfully recalculated from {count} document lines."))
+        self.stdout.write(self.style.SUCCESS(f"[SUCCESS] Stock successfully recalculated from {count} document lines."))

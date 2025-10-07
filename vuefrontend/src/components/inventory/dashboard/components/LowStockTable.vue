@@ -19,9 +19,9 @@
       </button>
     </div>
     
-    <div v-else-if="showEmptyTable || products.length > 0" class="table-responsive">
+    <div v-else-if="showEmptyTable || products.length > 0" class="table-responsive scrollable-table">
       <table class="table table-hover">
-        <thead class="table-warning">
+        <thead>
           <tr>
             <th>Name</th>
             <th>SKU</th>
@@ -164,7 +164,7 @@ export default {
   border-top: none;
   font-weight: 600;
   color: #495057;
-  background-color: #fff3cd;
+  background-color: #f8f9fa;
 }
 
 .table td {
@@ -213,10 +213,53 @@ export default {
   }
 }
 
+/* Scroll optimizado para muchas filas */
+.scrollable-table {
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.375rem;
+}
+
+.scrollable-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+/* Scroll suave */
+.scrollable-table {
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar personalizado */
+.scrollable-table::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollable-table::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+
+}
+
+.scrollable-table::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.scrollable-table::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
-  .table-responsive {
+  .scrollable-table {
     font-size: 0.9rem;
+    max-height: 400px;
   }
   
   .btn {

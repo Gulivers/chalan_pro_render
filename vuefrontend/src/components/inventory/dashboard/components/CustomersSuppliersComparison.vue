@@ -264,8 +264,6 @@ export default defineComponent({
           animation: {
             duration: 0
           },
-          events: [], // Deshabilitar eventos para evitar problemas
-          onHover: null, // Deshabilitar hover para evitar problemas
           plugins: {
             title: {
               display: true,

@@ -69,7 +69,7 @@
                   placeholder="Select Category"
                   class="flex-grow-1"
                   :class="{ 'is-invalid': fieldErrors.category }"
-                  :disabled="isReadOnly"
+                  :disabled="isReadOnly || !hasPermission('appinventory.add_productcategory')"
                   @open="loadCategories"
                   v-tt
                   data-title="Required field for product categorization" />
@@ -96,10 +96,10 @@
               <div v-if="fieldErrors.category" class="invalid-feedback d-block">{{ fieldErrors.category }}</div>
             </div>
 
-            <!-- Brand -->
+            <!-- Brands (multiple selection) -->
             <div class="col-md-6 mb-3">
               <label class="form-label d-flex align-items-center gap-2">
-                Brand
+                Brands
                 <i
                   v-tt
                   class="fas fa-info-circle text-muted"
@@ -108,16 +108,19 @@
               <div class="d-flex align-items-center">
                 <v-select
                   :options="brands"
-                  v-model="product.brand"
-                  :reduce="brand => brand.id"
                   label="name"
-                  placeholder="Select Brand"
+                  :reduce="brand => brand.id"
+                  v-model="product.brands"
+                  placeholder="Select Brands"
                   class="flex-grow-1"
-                  :class="{ 'is-invalid': fieldErrors.brand }"
-                  :disabled="isReadOnly"
+                  :class="{ 'is-invalid': fieldErrors.brands }"
+                  :disabled="isReadOnly || !hasPermission('appinventory.add_productcategory')"
+                  multiple
+                  :close-on-select="false"
+                  :clearable="true"
                   @open="loadBrands"
                   v-tt
-                  data-title="Required field for brand selection" />
+                  data-title="Required field - select one or more brands" />
                 <button
                   class="btn btn-outline-secondary btn-sm ms-1"
                   type="button"
@@ -127,18 +130,12 @@
                   data-title="Add a new brand to the system">
                   <img src="@assets/img/icon-addlink.svg" alt="Add" width="15" height="15" />
                 </button>
-                <button
-                  v-if="product.brand"
-                  class="btn btn-outline-secondary btn-sm ms-1"
-                  type="button"
-                  @click="openBrandModal('edit', product.brand)"
-                  :disabled="isReadOnly || !hasPermission('appinventory.change_productbrand')"
-                  v-tt
-                  data-title="Edit the currently selected brand">
-                  <img src="@assets/img/icon-changelink.svg" alt="Edit" width="15" height="15" />
-                </button>
               </div>
-              <div v-if="fieldErrors.brand" class="invalid-feedback d-block">{{ fieldErrors.brand }}</div>
+              <div v-if="fieldErrors.brands" class="invalid-feedback d-block">{{ fieldErrors.brands }}</div>
+              <div v-if="product.brands && product.brands.length > 0" class="small text-muted mt-1">
+                <strong>Default Brand:</strong>
+                {{ getDefaultBrandName() || 'Will be auto-assigned' }}
+              </div>
             </div>
 
             <!-- Default Unit -->
@@ -159,7 +156,7 @@
                   placeholder="Select Unit"
                   class="flex-grow-1"
                   :class="{ 'is-invalid': fieldErrors.unit_default }"
-                  :disabled="isReadOnly"
+                  :disabled="isReadOnly || !hasPermission('appinventory.add_productcategory')"
                   @open="loadUnits"
                   v-tt
                   data-title="Required field for unit selection" />
@@ -289,7 +286,7 @@
           name: '',
           sku: '',
           category: '',
-          brand: '',
+          brands: [],
           unit_default: '',
           reorder_level: 0,
           is_active: true,
@@ -315,6 +312,7 @@
     created() {
       // Support query-based navigation from ProductList: ?mode=view|edit&id=XX
       this.isReadOnly = this.$route?.query?.mode === 'view' || this.isReadOnly;
+
       this.loadInitialData();
 
       const id = this.objectId || this.$route?.params?.id || this.$route?.query?.id;
@@ -354,6 +352,14 @@
           if (!id) return;
           const res = await axios.get(`/api/products/${id}/`);
           this.product = res.data;
+
+          // Convert brands response to array of IDs
+          if (res.data.brands && Array.isArray(res.data.brands)) {
+            this.product.brands = res.data.brands.map(brand => (typeof brand === 'object' ? brand.id : brand));
+          } else {
+            // Ensure brands is always an array
+            this.product.brands = [];
+          }
 
           const prices = Array.isArray(res.data.prices) ? res.data.prices : [];
           const unitsFlags = Array.isArray(res.data.price_units) ? res.data.price_units : [];
@@ -446,7 +452,10 @@
 
         // Required selects
         if (!this.normalizeId(this.product.category)) this.pushFieldError('category', 'Category is required.');
-        if (!this.normalizeId(this.product.brand)) this.pushFieldError('brand', 'Brand is required.');
+
+        if (!this.product.brands || !Array.isArray(this.product.brands) || this.product.brands.length === 0) {
+          this.pushFieldError('brands', 'At least one brand is required.');
+        }
         if (!this.normalizeId(this.product.unit_default))
           this.pushFieldError('unit_default', 'Default Unit is required.');
       },
@@ -545,7 +554,7 @@
             name: this.product.name,
             sku: this.product.sku,
             category: this.normalizeId(this.product.category),
-            brand: this.normalizeId(this.product.brand),
+            brands_data: this.product.brands || [],
             unit_default: this.normalizeId(this.product.unit_default),
             reorder_level: this.product.reorder_level,
             is_active: !!this.product.is_active,
@@ -573,8 +582,9 @@
           if (status === 400 && data && typeof data === 'object') {
             for (const [key, value] of Object.entries(data)) {
               const msg = Array.isArray(value) ? value.join(' ') : String(value);
-              if (['name', 'sku', 'category', 'brand', 'unit_default'].includes(key)) {
-                this.pushFieldError(key, msg);
+              if (['name', 'sku', 'category', 'brands', 'brands_data', 'unit_default'].includes(key)) {
+                const fieldKey = key === 'brands_data' ? 'brands' : key;
+                this.pushFieldError(fieldKey, msg);
               }
             }
 
@@ -652,6 +662,15 @@
       },
 
       // --- Utils ---
+      getDefaultBrandName() {
+        if (!this.product.brands || this.product.brands.length === 0) return null;
+
+        // Find the brand object that matches the first brand ID (which should be default)
+        const firstBrandId = this.product.brands[0];
+        const brandObj = this.brands.find(b => b.id === firstBrandId);
+        return brandObj ? brandObj.name : null;
+      },
+
       escapeHtml(str) {
         return String(str)
           .replaceAll('&', '&amp;')

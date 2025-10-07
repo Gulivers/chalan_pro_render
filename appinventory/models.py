@@ -66,6 +66,7 @@ class ProductCategory(models.Model):
 class ProductBrand(models.Model):
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False, help_text="Marca predeterminada para el producto")
 
     def __str__(self):
         return self.name
@@ -75,14 +76,41 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     sku = models.CharField(max_length=100, unique=True)
     category = models.ForeignKey(ProductCategory,  on_delete=models.PROTECT, null=True)
-    brand = models.ForeignKey(ProductBrand,  on_delete=models.PROTECT, null=True, blank=True)
+    brands = models.ManyToManyField(ProductBrand, related_name='products')
     reorder_level = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     unit_default = models.ForeignKey(UnitOfMeasure, on_delete=models.PROTECT, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
+
+    def clean(self):
+        """Valida que el producto tenga al menos una marca asignada"""
+        super().clean()
+        if self.pk:  # Solo validar si el objeto ya existe
+            if self.brands.count() == 0:
+                raise ValidationError("El producto debe tener al menos una marca asignada.")
+
+    def get_default_brand(self):
+        """Obtiene la marca predeterminada del producto"""
+        default_brand = self.brands.filter(is_default=True).first()
+        if default_brand:
+            return default_brand
+        # Si no hay marca default, retorna la primera disponible
+        return self.brands.first()
+
+    def ensure_default_brand(self):
+        """Asegura que el producto tenga una marca predeterminada"""
+        if self.brands.exists():
+            # Si no hay marca default pero hay marcas, marcar la primera como default
+            if not self.brands.filter(is_default=True).exists():
+                first_brand = self.brands.first()
+                first_brand.is_default = True
+                first_brand.save()
+
     def __str__(self):
-        return self.name
+        default_brand = self.get_default_brand()
+        brand_str = f" ({default_brand.name})" if default_brand else ""
+        return f"{self.name}{brand_str}"
 
 class PriceType(models.Model):
     name = models.CharField(max_length=15, unique=True)

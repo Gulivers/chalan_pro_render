@@ -4,7 +4,7 @@
       <div class="d-flex gap-2">
           <button class="btn btn-outline-primary" type="button" @click="addLine">
             <i class="bi bi-plus-lg me-1"></i>
-            Add line
+            Add Row
           </button>
           <button class="btn btn-outline-info" type="button" :disabled="!hasSelection" @click="duplicateSelected">
             <i class="bi bi-files  me-1"></i>
@@ -59,6 +59,7 @@
                 @search="q => searchProducts(idx, q)"
                 @option:selected="opt => onProductSelected(idx, opt)"
                 @clear="onProductCleared(idx)"
+                @update:modelValue="val => onProductChanged(idx, val)"
                 @keydown.enter="focusNextField(idx, 'quantity')"
                 placeholder="Search product..."
                 :class="{ 'is-invalid': row._errors?.product }">
@@ -202,17 +203,23 @@
             <td>
                <v-select
                  :id="`brand-${idx}`"
-                 :options="brandsOptions"
+                 :options="(row.brands && row.brands.length > 0) ? row.brands : brandsOptions"
                  :reduce="o => o.value"
                  label="label"
                  v-model="row.brand"
                  @keydown.enter="focusNextRow(idx)"
-                 placeholder="Brand...">
+                 :placeholder="(row.brands && row.brands.length > 0) ? 'Brand...' : 'Load brands from product...'"
+                 :disabled="!row.product">
                  <template #selected-option="{ label }">
                    <div class="text-truncate" style="max-width: 130px">{{ label }}</div>
                  </template>
                  <template #option="{ label }">
                    <div class="text-truncate" style="max-width: 130px">{{ label }}</div>
+                 </template>
+                 <template #no-options>
+                   <div class="text-muted small">
+                     {{ row.product ? 'No brands available' : 'Select a product first' }}
+                   </div>
                  </template>
                </v-select>
             </td>
@@ -276,7 +283,11 @@
       console.log('LinesGrid: lines prop changed:', val);
       isUpdatingFromProps.value = true;
 
-      const newLines = (val || []).map(x => ({ ...x, __key: x.id || cryptoRandom() }));
+      const newLines = (val || []).map(x => ({ 
+        ...x, 
+        __key: x.id || cryptoRandom(),
+        brands: x.brands || [], // Asegurar que brands siempre esté definido
+      }));
       console.log('🔍 New lines with product_label:', newLines.map(l => ({ 
         product: l.product, 
         product_label: l.product_label 
@@ -410,7 +421,8 @@
       final_price: 0,
       warehouse: defaultWarehouse.value, // Auto-fill con warehouse predeterminado
       price_type: null,
-      brand: null,
+      brands: [], // Cambiar a array para múltiples marcas
+      brand: null, // Mantener para compatibilidad y marca seleccionada
       _errors: {},
     };
 
@@ -497,6 +509,57 @@
     }
   }
 
+  // Función para obtener las marcas de un producto
+  async function fetchProductBrands(productId) {
+    try {
+      const { data } = await axios.get(`/api/products/${productId}/brands/`);
+      return data.brands || [];
+    } catch (error) {
+      console.warn('Could not fetch product brands:', error);
+      return [];
+    }
+  }
+
+  // Función para actualizar marcas cuando cambia el producto
+  async function updateBrandsForProduct(idx, productId) {
+    if (!productId) return;
+    
+    try {
+      const brands = await fetchProductBrands(productId);
+      const r = linesLocal.value[idx];
+      
+      if (brands.length > 0) {
+        // Formatear las marcas para v-select
+        r.brands = brands.map(b => ({ value: b.id, label: b.name }));
+        
+        // Si no hay marca seleccionada, usar la default
+        if (!r.brand) {
+          const defaultBrand = brands.find(b => b.is_default) || brands[0];
+          r.brand = defaultBrand.id;
+        }
+        
+        console.log('🔍 Updated brands for product:', {
+          productId,
+          brands: r.brands,
+          selectedBrand: r.brand
+        });
+      }
+    } catch (error) {
+      console.warn('Error updating brands for product:', error);
+    }
+  }
+
+  // Función para manejar cuando cambia el producto por v-model
+  async function onProductChanged(idx) {
+    const r = linesLocal.value[idx];
+    if (r.product) {
+      await updateBrandsForProduct(idx, r.product);
+    } else {
+      r.brands = [];
+      r.brand = null;
+    }
+  }
+
   async function onProductSelected(idx, option) {
     console.log('🔍 onProductSelected called with:', option);
     const r = linesLocal.value[idx];
@@ -523,16 +586,21 @@
           r.price_type = data.price_type;
         }
         
-        // Auto-fill Brand desde Product
-        if (data.brand) {
-          r.brand = data.brand;
+        // Auto-fill Brand desde Product (usa el default_brand ahora)
+        if (data.default_brand?.id) {
+          r.brand = data.default_brand.id;
+          // Solo establecer brands si no están ya cargadas
+          if (!r.brands || r.brands.length === 0) {
+            await updateBrandsForProduct(idx, option.value);
+          }
         }
         
         console.log('🔍 Auto-filled fields from ProductPrice:', {
           unit: data.unit,
           unit_price: data.unit_price,
           price_type: data.price_type,
-          brand: data.brand
+          brand: data.default_brand,
+          brands: r.brands
         });
         
       } catch (error) {
@@ -543,10 +611,8 @@
           r.unit = option.product.unit_default.id || option.product.unit_default;
         }
         
-        // Fallback: Auto-fill brand from product
-        if (option?.product?.brand) {
-          r.brand = option.product.brand.id || option.product.brand;
-        }
+        // Fallback: obtener marcas disponibles del producto usando la función dedicada
+        await updateBrandsForProduct(idx, option.value);
       }
     }
 
@@ -588,6 +654,7 @@
     r.unit = null;
     r.price_type = null;
     r.brand = null;
+    r.brands = []; // Limpiar marcas también
     recalcRow(idx);
   }
 

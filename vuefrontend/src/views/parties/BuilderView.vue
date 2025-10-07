@@ -112,8 +112,8 @@
 </template>
 
 <script setup>
-import TxCard from '@/components/layout/TxCard.vue'
-import '@/assets/css/base.css'
+import TxCard from '@components/layout/TxCard.vue'
+import '@assets/css/base.css'
 
 import { ref, computed, onMounted, getCurrentInstance } from 'vue'
 import axios from 'axios'

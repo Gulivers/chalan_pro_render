@@ -1,189 +1,511 @@
 <template>
-  <div class="card shadow mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h6 class="text-primary mb-0">Products</h6>
-      <button class="btn btn-success" @click="goToCreateForm">
-        <strong>+</strong>
-        New Product
-      </button>
-    </div>
+  <TxCard class="mt-0">
+    <!-- Header del card -->
+    <template #header>
+      <div class="d-flex justify-content-between align-items-center w-100">
+        <h6 class="text-primary mb-0">Products</h6>
+        <div>
+          <button class="btn btn-success" @click="goToCreateForm">+ New Product</button>
+        </div>
+      </div>
+    </template>
 
     <div class="card-body">
-      <div v-if="loading" class="text-center py-3">
-        Loading Products...
-        <div class="spinner-border" role="status"></div>
+      <!-- Stats Cards -->
+      <div class="row mb-3 mt-0">
+        <div class="col-md-3">
+          <div class="card bg-primary text-white mb-2">
+            <div class="card-body text-center py-1">
+              <h6 class="mb-0">{{ stats.total }}</h6>
+              <small>Total Products</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-success text-white mb-2">
+            <div class="card-body text-center py-1">
+              <h6 class="mb-0">{{ stats.active }}</h6>
+              <small>Active</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card bg-secondary text-white mb-2">
+            <div class="card-body text-center py-1">
+              <h6 class="mb-0">{{ stats.inactive }}</h6>
+              <small>Inactive</small>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card mb-2">
+            <div class="card-body text-center py-1">
+              <button class="btn btn-outline-success bt-sm py-2 w-100" @click="refreshTable">Refresh List</button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div v-else-if="items.length" class="table-responsive">
-        <table class="table table-bordered table-striped table-hover" id="productTable" ref="productTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>SKU</th>
-              <th>Category</th>
-              <th>Brand</th>
-              <th>Reorder Level</th>
-              <th>Default Unit</th>
-              <th class="text-center">Active</th>
-              <th class="text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in items" :key="item.id">
-              <td>{{ item.id }}</td>
-              <td>{{ item.name }}</td>
-              <td>{{ item.sku }}</td>
-              <td>{{ item.category_name || '—' }}</td>
-              <td>{{ item.brand_name || '—' }}</td>
-              <td>{{ item.reorder_level }}</td>
-              <td>{{ item.unit_name || '—' }}</td>
-              <td class="text-center">
-                <span class="badge" :class="item.is_active ? 'bg-success' : 'bg-secondary'">
-                  {{ item.is_active ? 'Active' : 'Inactive' }}
-                </span>
-              </td>
-              <td class="text-center">
-                <div class="btn-group btn-group-sm">
-                  <button
-                    v-if="hasPermission('appinventory.view_product')"
-                    class="btn btn-outline-success"
-                    @click="viewItem(item.id)">
-                    View
-                  </button>
-                  <button
-                    v-if="hasPermission('appinventory.change_product')"
-                    class="btn btn-outline-primary"
-                    @click="editItem(item.id)">
-                    Edit
-                  </button>
-                  <button
-                    v-if="hasPermission('appinventory.delete_product')"
-                    class="btn btn-outline-danger"
-                    @click="deleteItem(item.id)">
-                    Delete
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- User Interface Controls -->
+      <div class="row mb-3">
+        <div class="col-lg-3 text-start">
+          <BFormGroup
+            label="entries per page:"
+            label-for="per-page-select"
+            label-cols-sm="6"
+            label-cols-md="6"
+            label-cols-lg="6"
+            label-align-sm="right"
+            label-size="sm"
+            class="mb-0 small">
+            <BFormSelect
+              id="per-page-select"
+              v-model="perPage"
+              :options="pageOptions"
+              size="sm"
+              class="form-select-xs" />
+          </BFormGroup>
+        </div>
+        <div class="col-lg-3">  </div>
+        <div class="col-lg-6 text-end">
+          <BFormGroup
+            label="Search:"
+            label-for="filter-input"
+            label-cols-sm="4"
+            label-cols-md="6"
+            label-cols-lg="6"
+            label-align-sm="text-start"
+            label-size="sm"
+            class="mb-0">
+            <div class="position-relative">
+              <div class="search-wrapper">
+                <BFormInput 
+                  id="filter-input" 
+                  v-model="filter" 
+                  type="search" 
+                  placeholder="Search by name, SKU, or category..." 
+                  size="sm" />
+              </div>
+            </div>
+          </BFormGroup>
+        </div>
+       </div>
 
-      <div v-else class="text-muted text-center">No products found.</div>
+       <!-- Main Table with Overlay -->
+       <BOverlay 
+         :show="isLoading" 
+         rounded="sm" 
+         opacity="0.85"
+         variant="light">
+         <template #overlay>
+           <div class="text-center">
+             <BSpinner type="border" variant="secondary" class="mb-3" />
+             <div class="h5 text-primary">Loading Products...</div>
+             <div class="text-muted">Please wait while we fetch the data</div>
+           </div>
+         </template>
+         
+         <BTable
+           ref="productTable"
+           :provider="provider"
+           :fields="fields"
+           :filter="filter"
+           :per-page="perPage"
+           :current-page="currentPage"
+           bordered
+           hover
+           responsive
+           striped
+           class="table-bordered">
+        <!-- ID Column -->
+        <template #cell(id)="row">
+          <strong>{{ row.item.id }}</strong>
+        </template>
+
+        <!-- Name Column -->
+        <template #cell(name)="row">
+          <div class="text-start">
+            {{ row.item.name }}
+          </div>
+        </template>
+
+        <!-- Category Column -->
+        <template #cell(category_name)="row">
+          <div class="text-start">
+            {{ row.item.category_name || '—' }}
+          </div>
+        </template>
+
+        <!-- Default Brand Column -->
+        <template #cell(default_brand)="row">
+          <div class="text-start">
+            <span v-if="row.item.default_brand?.name">
+              <span class="badge bg-primary" style="font-size: 0.75rem">{{ row.item.default_brand.name }}</span>
+              <small v-if="row.item.brands_count > 1" class="text-muted ms-1">
+                ({{ row.item.brands_count }} brands)
+              </small>
+            </span>
+            <span v-else class="text-muted">No brand assigned</span>
+          </div>
+        </template>
+
+        <!-- Active Column -->
+        <template #cell(is_active)="row">
+          <span class="badge" :class="row.item.is_active ? 'bg-success' : 'bg-secondary'" style="font-size: 0.75rem">
+            {{ row.item.is_active ? 'Active' : 'Inactive' }}
+          </span>
+        </template>
+
+        <!-- Actions Column -->
+        <template #cell(actions)="row">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-success me-1" @click="viewItem(row.item.id)">View</button>
+            <button class="btn btn-outline-primary me-1" @click="editItem(row.item.id)">Edit</button>
+            <button class="btn btn-outline-danger" @click="deleteItem(row.item.id)">Delete</button>
+          </div>
+        </template>
+      </BTable>
+      </BOverlay>
+
+      <!-- Pagination -->
+      <div class="d-flex justify-content-end mt-3">
+        <BPagination
+          v-model="currentPage"
+          :total-rows="totalRows"
+          :per-page="perPage"
+          @update:model-value="onPageChange" />
+      </div>
     </div>
-  </div>
+  </TxCard>
 </template>
 
 <script>
+  import TxCard from '@components/layout/TxCard.vue';
+  import '@assets/css/base.css';
   import axios from 'axios';
-  import Swal from 'sweetalert2';
+  import { computed, ref, watch, onMounted, getCurrentInstance } from 'vue';
+  import { useRouter } from 'vue-router';
+
+  // Bootstrap Vue Next components
+  import {
+    BTable,
+    BFormGroup,
+    BFormInput,
+    BInputGroup,
+    BInputGroupText,
+    BButton,
+    BFormSelect,
+    BPagination,
+    BOverlay,
+    BSpinner,
+  } from 'bootstrap-vue-next';
+
+  // Provider endpoint for server-side rendering
+  const ENDPOINT = '/api/products-provider/';
 
   export default {
     name: 'ProductListView',
-    data() {
-      return {
-        items: [],
-        loading: false,
-      };
+    components: {
+      TxCard,
+      BTable,
+      BFormGroup,
+      BFormInput,
+      BInputGroup,
+      BInputGroupText,
+      BButton,
+      BFormSelect,
+      BPagination,
+      BOverlay,
+      BSpinner,
     },
-    mounted() {
-      this.fetchProducts();
-    },
-    beforeUnmount() {
-      const table = this.$refs.productTable;
-      if (table && $.fn.dataTable && $.fn.dataTable.isDataTable(table)) {
-        $(table).DataTable().destroy();
-      }
-    },
-    methods: {
-      fetchProducts() {
-        this.loading = true;
-        axios
-          .get('/api/products/')
-          .then(res => {
-            this.items = res.data;
-            this.loading = false;
-            this.$nextTick(() => {
-              if (this.items.length && this.$refs.productTable) {
-                this.initDataTable();
-              }
-            });
-          })
-          .catch(err => {
-            this.loading = false;
-            this.notifyError?.('Failed to load products.');
-            console.error('Fetch error:', err);
-          });
-      },
-      initDataTable() {
-        const table = this.$refs.productTable;
-        if (table && $.fn.dataTable) {
-          const $table = $(table);
-          if ($.fn.dataTable.isDataTable(table)) {
-            $table.DataTable().destroy();
-          }
-          setTimeout(() => {
-            $table.DataTable({
-              responsive: true,
-              pageLength: 50,
-              order: [[0, 'desc']],
-              language: { search: 'Search:' },
-            });
-          }, 50);
-        }
-      },
-      goToCreateForm() {
-        // Unificar en una sola ruta con querys
-        this.$router.push({ name: 'product-form', query: { mode: 'create' } });
-      },
-      viewItem(id) {
-        // Navegar con querys: ?mode=view&id=XX
-        this.$router.push({ name: 'product-form', query: { mode: 'view', id: String(id) } });
-      },
-      editItem(id) {
-        // Navegar con querys: ?mode=edit&id=XX
-        this.$router.push({ name: 'product-form', query: { mode: 'edit', id: String(id) } });
-      },
 
-      async deleteItem(id) {
-        const result = await Swal.fire({
-          title: 'Are you sure?',
-          text: `This product ${id} will be permanently deleted.`,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#d33',
-          cancelButtonColor: '#3085d6',
-          confirmButtonText: 'Yes, delete it!',
-        });
+    setup() {
+      const router = useRouter();
+      const { proxy } = getCurrentInstance();
 
-        if (!result.isConfirmed) return;
+      // Reactive data
+      const products = ref([]);
+      const stats = ref({
+        total: 0,
+        active: 0,
+        inactive: 0,
+      });
+      const lastUpdate = ref(null);
+      const isLoading = ref(true); // Start with loading state
 
+      // Table controls
+      const currentPage = ref(1);
+      const perPage = ref(25);
+      const filter = ref('');
+      const totalRows = ref(0);
+
+      // Table configuration
+      const fields = [
+        { key: 'id', label: 'ID', sortable: true, thClass: 'text-center', tdClass: 'text-center' },
+        { key: 'name', label: 'Name', sortable: true, thClass: 'text-start' },
+        { key: 'sku', label: 'SKU', sortable: true },
+        { key: 'category_name', label: 'Category', sortable: true },
+        { key: 'default_brand', label: 'Default Brand', sortable: false },
+        {
+          key: 'reorder_level',
+          label: 'Reorder Level',
+          sortable: true,
+          thClass: 'text-center',
+          tdClass: 'text-center',
+        },
+        { key: 'unit_name', label: 'Default Unit', sortable: true },
+        { key: 'is_active', label: 'Active', sortable: true, thClass: 'text-center', tdClass: 'text-center' },
+        { key: 'actions', label: 'Actions', sortable: false, thClass: 'text-center', tdClass: 'text-center' },
+      ];
+
+      const pageOptions = [
+        { value: 10, text: '10' },
+        { value: 25, text: '25' },
+        { value: 50, text: '50' },
+        { value: 100, text: '100' },
+      ];
+
+      // Provider function for server-side rendering
+      const provider = async context => {
         try {
-          await axios.delete(`/api/products/${id}/`);
+          console.log('📡 Provider called with context:', context);
+          
+          // Only show loading if not already loading (avoid flickering)
+          if (!isLoading.value) {
+            isLoading.value = true;
+          }
 
-          const table = this.$refs.productTable;
-          if (table && $.fn.dataTable?.isDataTable(table)) $(table).DataTable().destroy();
+          // Use context values for pagination (from BTable provider context)
+          const page = context.currentPage || 1;
+          const perPageValue = context.perPage || 25;
 
-          this.items = this.items.filter(item => item.id !== id);
-
-          this.$nextTick(() => {
-            if (this.items.length && this.$refs.productTable) {
-              $(this.$refs.productTable).DataTable({
-                responsive: true,
-                pageLength: 50,
-                order: [[0, 'desc']],
-                language: { search: 'Search:' },
-              });
-            }
+          const params = new URLSearchParams({
+            page: page,
+            per_page: perPageValue,
+            search: context.filter || '',
+            ordering: context.sortBy ? getOrderingFromSortBy(context.sortBy) : '-id',
           });
 
-          this.notifyToastSuccess?.('The product has been deleted.');
-        } catch (err) {
-          console.error('Delete failed:', err);
-          Swal.fire({ title: 'Error', text: 'There was a problem deleting the product.', icon: 'error' });
+          const response = await axios.get(`${ENDPOINT}?${params}`);
+
+          if (response.data && response.data.items) {
+            // Update stats from server response
+            if (response.data.stats) {
+              stats.value = response.data.stats;
+            }
+            totalRows.value = response.data.totalRows || 0;
+            lastUpdate.value = new Date().toLocaleString();
+
+            console.log('✅ Provider response:', response.data.items.length, 'items');
+            return response.data.items;
+          } else {
+            throw new Error('Invalid response format');
+          }
+        } catch (error) {
+          console.error('❌ Provider error:', error);
+          proxy?.notifyError?.('Error loading products.');
+          return [];
+        } finally {
+          // Add a small delay to show the loading state (minimum 300ms for UX)
+          setTimeout(() => {
+            isLoading.value = false;
+          }, 300);
         }
-      },
+      };
+
+      // Helper function to convert sortBy to Django ordering
+      const getOrderingFromSortBy = sortBy => {
+        if (!sortBy) return '-id';
+
+        // Convert Bootstrap Vue Next sortBy format to Django ordering
+        const field = Object.keys(sortBy)[0];
+        const desc = sortBy[field] === 'desc';
+        return desc ? `-${field}` : field;
+      };
+
+      // Table reference
+      const productTable = ref(null);
+
+      // Page change handler
+      const onPageChange = page => {
+        console.log('📄 Page changed to:', page);
+        currentPage.value = page;
+        // The provider will be called automatically by BTable
+      };
+
+      // Refresh function for manual refresh
+      const refreshTable = () => {
+        console.log('🔄 Refreshing table...');
+        isLoading.value = true;
+        // The provider will be called automatically by BTable
+        // We just need to trigger a refresh
+        if (productTable.value) {
+          productTable.value.refresh();
+        }
+      };
+
+      // Load products on mount - not needed with provider pattern
+      onMounted(async () => {
+        console.log('🚀 ProductListView mounted with provider pattern');
+      });
+
+      const goToCreateForm = () => {
+        // Unificar en una sola ruta con querys
+        router.push({ name: 'product-form', query: { mode: 'create' } });
+      };
+
+      const viewItem = id => {
+        // Navigate to view mode using query parameter
+        router.push({ name: 'product-form', query: { mode: 'view', id: id } });
+      };
+
+      const editItem = id => {
+        // Open in new tab
+        const url = router.resolve({ name: 'product-form', query: { mode: 'edit', id: id } });
+        window.open(url.href, '_blank');
+      };
+
+      const deleteItem = id => {
+        // Use the same pattern as BuilderView
+        proxy?.confirmDelete?.('Are you sure?', `Delete product #${id}? This action cannot be undone.`, async () => {
+          try {
+            await axios.delete(`/api/products/${id}/`);
+            // Show success toast and refresh table
+            proxy?.notifyToastSuccess?.('The product has been deleted.');
+            // Refresh the table to show updated data
+            refreshTable();
+          } catch (error) {
+            console.error('Error deleting product:', error);
+            const status = error?.response?.status;
+            const data = error?.response?.data;
+
+            if (status === 403) {
+              proxy?.notifyError?.('You do not have permission for this action.');
+            } else if (status === 409) {
+              const detail = data?.detail || 'Cannot delete this product because it is being used elsewhere.';
+              proxy?.notifyError?.(detail);
+            } else {
+              const detail = data?.detail || 'Error deleting the product.';
+              proxy?.notifyError?.(detail);
+            }
+          }
+        });
+      };
+
+      return {
+        // Data
+        products,
+        stats,
+        lastUpdate,
+        isLoading,
+
+        // Table controls
+        currentPage,
+        perPage,
+        filter,
+        totalRows,
+
+        // Table reference
+        productTable,
+
+        // Configuration
+        fields,
+        pageOptions,
+
+        // Provider
+        provider,
+
+        // Methods
+        refreshTable,
+        onPageChange,
+        goToCreateForm,
+        viewItem,
+        editItem,
+        deleteItem,
+      };
     },
   };
 </script>
+
+<style scoped>
+  .table td {
+    vertical-align: middle;
+  }
+  .badge {
+    font-size: 0.75rem;
+  }
+  .card {
+    border: none;
+  }
+  .bg-primary {
+    background-color: #007bff !important;
+  }
+  .bg-success {
+    background-color: #198754 !important;
+  }
+  .bg-secondary {
+    background-color: #6c757d !important;
+  }
+
+  /* Pagination styles */
+  .pagination .page-link {
+    color: #007bff;
+    border-color: #dee2e6;
+    padding: 0.375rem 0.75rem;
+  }
+
+  .pagination .page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+    color: white;
+  }
+
+  .pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: #fff;
+    border-color: #dee2e6;
+  }
+
+  .pagination .page-link:hover {
+    color: #0056b3;
+    background-color: #e9ecef;
+    border-color: #dee2e6;
+  }
+
+  .form-select-sm {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+    height: auto;
+  }
+
+  .form-select-xs {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.3rem;
+    height: 1.6rem;
+    min-width: 60px;
+  }
+
+  .text-muted.small {
+    font-size: 0.8rem;
+  }
+
+  /* Search clear button styles - copied from BuilderView */
+  .search-wrapper { 
+    position: relative; 
+  }
+  .btn-clear-x {
+    position: absolute; 
+    right: .5rem; 
+    top: 50%;
+    transform: translateY(-50%);
+    border: none; 
+    background: transparent; 
+    font-size: 1.25rem; 
+    line-height: 1;
+    color: #6c757d;
+    cursor: pointer;
+  }
+  .btn-clear-x:hover {
+    color: #495057;
+  }
+</style>

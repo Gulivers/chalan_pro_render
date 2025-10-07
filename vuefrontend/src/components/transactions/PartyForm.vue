@@ -429,7 +429,6 @@
   import { ref, reactive, computed, onMounted, onActivated, onBeforeUnmount, nextTick } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import axios from 'axios';
-  import vSelect from 'vue-select';
   import Swal from 'sweetalert2';
   import '@assets/css/base.css';
 

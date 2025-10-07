@@ -35,7 +35,8 @@ class ProductCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(ProductBrand)
 class ProductBrandAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_active')
+    list_display = ('name', 'is_default', 'is_active')
+    list_filter = ('is_active', 'is_default')
     search_fields = ('name',)
 
 
@@ -47,11 +48,18 @@ class ProductPriceInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'sku', 'category', 'brand', 'unit_default', 'is_active')
-    list_filter = ('category', 'brand', 'is_active')
+    list_display = ('name', 'sku', 'category', 'default_brand_display', 'unit_default', 'is_active')
+    list_filter = ('category', 'brands', 'is_active')
     search_fields = ('name', 'sku')
-    autocomplete_fields = ['category', 'brand', 'unit_default']
+    autocomplete_fields = ['category', 'unit_default']
+    filter_horizontal = ['brands']
     inlines = [ProductPriceInline]
+    
+    def default_brand_display(self, obj):
+        """Muestra la marca predeterminada del producto"""
+        default_brand = obj.get_default_brand()
+        return default_brand.name if default_brand else 'Sin marca'
+    default_brand_display.short_description = 'Marca Predeterminada'
 
 
 @admin.register(PriceType)
