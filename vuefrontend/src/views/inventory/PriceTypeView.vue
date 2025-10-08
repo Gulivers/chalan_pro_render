@@ -19,7 +19,7 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th v-for="field in headers" :key="field">
+              <th v-for="field in headers" :key="field" :class="getHeaderClass(field)">
                 {{ schema[field]?.label || field }}
               </th>
               <th class="text-center">Actions</th>
@@ -29,7 +29,7 @@
             <tr v-for="item in items" :key="item.id">
               <td>{{ item.id }}</td>
 
-              <td v-for="field in headers" :key="field">
+              <td v-for="field in headers" :key="field" :class="getCellClass(field)">
                 <template v-if="typeof item[field] === 'boolean'">
                   <span class="badge" :class="item[field] ? 'bg-success' : 'bg-secondary'">
                     {{ item[field] ? 'Active' : 'Inactive' }}
@@ -215,6 +215,22 @@
           text: message,
           confirmButtonText: 'OK',
         });
+      },
+
+      getHeaderClass(field) {
+        // Alinear a la izquierda los campos específicos
+        if (field === 'description' || field === 'is_active') {
+          return 'text-start';
+        }
+        return '';
+      },
+
+      getCellClass(field) {
+        // Alinear a la izquierda el contenido de los campos específicos
+        if (field === 'description' || field === 'is_active') {
+          return 'text-start';
+        }
+        return '';
       },
     },
   };

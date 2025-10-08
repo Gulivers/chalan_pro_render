@@ -1,264 +1,213 @@
 <template>
-  <div class="card shadow mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h6 class="text-primary mb-0">Product Brands</h6>
-      <button class="btn btn-success" @click="goToCreateForm">
-        <strong>+</strong> New Brand
-      </button>
-    </div>
+  <TxCard class="shadow-sm mt-0">
+    <!-- Header del card -->
+    <template #header>
+      <div class="d-flex justify-content-between align-items-center w-100">
+        <h6 class="text-primary mb-0">Product Brands</h6>
+        <button class="btn btn-success" @click="goToCreateForm">+ New Brand</button>
+      </div>
+    </template>
 
-    <div class="card-body">
-      <!-- Loading state -->
-      <div v-if="isBusy" class="text-center py-3">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
+    <!-- Filtros -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <!-- entries per page (izquierda) -->
+      <div class="col-md-3">
+        <div class="input-group">
+          <select v-model="perPage" class="form-select">
+            <option v-for="n in [10, 25, 50, 100]" :key="n" :value="n">{{ n }}</option>
+          </select>
+          <span class="text-primary p-2">entries per page</span>
         </div>
-        <div class="mt-2">Loading Brands...</div>
       </div>
 
-      <!-- Table with Bootstrap Vue Next -->
-      <div v-else-if="items.length > 0" class="table-responsive">
-        <b-table
-          :items="items"
-          :fields="fields"
-          :per-page="perPage"
-          :current-page="currentPage"
-          striped
-          hover
-          responsive
-          :sort-by="sortBy"
-          :sort-desc="sortDesc"
-          @sort-changed="onSortChanged"
-          class="table-bordered"
-        >
-          <!-- ID column -->
-          <template #cell(id)="row">
-            <strong>{{ row.item.id }}</strong>
-          </template>
-
-          <!-- Name column -->
-          <template #cell(name)="row">
-            <div class="text-start">
-              <span class="fw-medium">{{ row.item.name }}</span>
-            </div>
-          </template>
-
-          <!-- Active column -->
-          <template #cell(is_active)="row">
-            <span class="badge" :class="row.item.is_active ? 'bg-success' : 'bg-secondary'">
-              {{ row.item.is_active ? 'Active' : 'Inactive' }}
-            </span>
-          </template>
-
-          <!-- Default column -->
-          <template #cell(is_default)="row">
-            <span class="badge" :class="row.item.is_default ? 'bg-primary' : 'bg-light text-dark'">
-              {{ row.item.is_default ? 'Default' : '—' }}
-            </span>
-          </template>
-
-          <!-- Actions column -->
-          <template #cell(actions)="row">
-            <div class="btn-group btn-group-sm">
-              <button class="btn btn-outline-success me-1" @click="viewItem(row.item.id)">
-                <i class="fas fa-eye"></i>
-              </button>
-              <button class="btn btn-outline-primary me-1" @click="editItem(row.item.id)">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button
-                class="btn btn-outline-danger"
-                @click="confirmDelete(row.item.id)"
-                :disabled="deletingId === row.item.id"
-              >
-                <span
-                  v-if="deletingId === row.item.id"
-                  class="spinner-border spinner-border-sm me-1"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                <i class="fas fa-trash"></i>
-              </button>
-            </div>
-          </template>
-        </b-table>
-
-        <!-- Pagination -->
-        <div class="d-flex justify-content-between align-items-center mt-3">
-          <div class="d-flex align-items-center gap-2">
-            <label class="form-label mb-0 small">Entries per page:</label>
-            <select v-model.number="perPage" class="form-select form-select-sm" style="width: auto;">
-              <option :value="10">10</option>
-              <option :value="25">25</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-            </select>
-            <span class="text-muted small">
-              Showing {{ (currentPage - 1) * perPage + 1 }} to 
-              {{ Math.min(currentPage * perPage, items.length) }} of 
-              {{ items.length }} entries
-            </span>
+      <!-- search (derecha) -->
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-primary p-2">Search:</span>
+          <div class="search-wrapper flex-grow-1">
+            <input
+              v-model="search"
+              type="text"
+              class="form-control"
+              placeholder="Search by name..."
+              autocomplete="off"
+            />
+            <button
+              v-show="search && search.length"
+              @mousedown.prevent
+              @click="search = ''"
+              type="button"
+              class="btn-clear-x"
+              title="Clear"
+            >×</button>
           </div>
-          
-          <b-pagination
-            v-model="currentPage"
-            :total-rows="items.length"
-            :per-page="perPage"
-            size="sm"
-            class="mb-0"
-          ></b-pagination>
         </div>
       </div>
-
-      <!-- Empty state -->
-      <div v-else class="text-muted text-center py-5">
-        <i class="fas fa-tags fa-3x mb-3 text-muted"></i>
-        <h5>No brands found</h5>
-        <p class="mb-0">Start by creating your first product brand.</p>
-      </div>
     </div>
-  </div>
+
+    <!-- Loading state -->
+    <div v-if="loading" class="text-center py-3">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <div class="mt-2">Loading Brands...</div>
+    </div>
+
+    <!-- tabla -->
+    <b-table
+      v-else
+      :items="filteredItems"
+      :fields="fields"
+      :per-page="perPage"
+      :current-page="currentPage"
+      bordered
+      hover
+      responsive
+      striped
+    >
+      <template #cell(is_active)="data">
+        <td class="text-center">
+          <span v-if="data.item.is_active" class="badge bg-success text-center">Active</span>
+          <span v-else class="badge bg-secondary">Inactive</span>
+        </td>
+      </template>
+
+      <template #cell(is_default)="data">
+        <td class="text-center">
+          <span v-if="data.item.is_default" class="badge bg-primary">Default</span>
+          <span v-else class="badge bg-light text-dark">—</span>
+        </td>
+      </template>
+
+      <template #cell(actions)="data">
+        <td class="text-center">
+          <div class="btn-group btn-group-sm" role="group">
+            <button class="btn btn-outline-success" @click="viewItem(data.item.id)">
+              View
+            </button>
+            <button class="btn btn-outline-primary" @click="editItem(data.item.id)">
+              Edit
+            </button>
+            <button
+              class="btn btn-outline-danger"
+              @click="confirmDelete(data.item.id)"
+              :disabled="deletingId === data.item.id"
+            >
+              <span
+                v-if="deletingId === data.item.id"
+                class="spinner-border spinner-border-sm me-1"
+                role="status"
+                aria-hidden="true"
+              ></span>
+              Delete
+            </button>
+          </div>
+        </td>
+      </template>
+    </b-table>
+
+    <!-- Empty state -->
+    <div v-if="!loading && filteredItems.length === 0" class="text-muted text-center py-5">
+      <h5>No brands found</h5>
+      <p class="mb-0">{{ search ? 'Try a different search term.' : 'Start by creating your first product brand.' }}</p>
+    </div>
+
+    <!-- paginación a la derecha -->
+    <div v-if="!loading && filteredItems.length > 0" class="d-flex justify-content-end mt-3">
+      <b-pagination
+        v-model="currentPage"
+        :total-rows="filteredItems.length"
+        :per-page="perPage"
+      />
+    </div>
+  </TxCard>
 </template>
 
-<script>
+<script setup>
+import TxCard from '@/components/layout/TxCard.vue'
+import '@/assets/css/base.css'
+
+import { ref, computed, onMounted, getCurrentInstance } from 'vue'
 import axios from 'axios'
-import Swal from 'sweetalert2'
+import { useRouter } from 'vue-router'
 
-export default {
-  name: 'ProductBrandView',
-  data() {
-    return {
-      items: [],
-      isBusy: false,
-      deletingId: null,
-      
-      // Table configuration
-      perPage: 25,
-      currentPage: 1,
-      sortBy: 'id',
-      sortDesc: true,
-      
-      // Table fields
-      fields: [
-        { key: 'id', label: 'ID', sortable: true, thClass: 'text-center', tdClass: 'text-center' },
-        { key: 'name', label: 'Name', sortable: true, thClass: 'text-start' },
-        { key: 'is_active', label: 'Active', sortable: true, thClass: 'text-center', tdClass: 'text-center' },
-        { key: 'is_default', label: 'Default', sortable: true, thClass: 'text-center', tdClass: 'text-center' },
-        { key: 'actions', label: 'Actions', sortable: false, thClass: 'text-center', tdClass: 'text-center' }
-      ]
+const { proxy } = getCurrentInstance()
+const router = useRouter()
+
+const brands = ref([])
+const search = ref('')
+const perPage = ref(25)
+const currentPage = ref(1)
+const loading = ref(false)
+const deletingId = ref(null)
+
+const fields = [
+  { key: 'id', label: 'ID', sortable: true },
+  { key: 'name', label: 'Name', sortable: true, thClass: 'text-start', tdClass: 'text-start'},
+  { key: 'is_active', label: 'Status',thClass: 'text-start' , tdClass: 'text-start' , sortable: true},
+  { key: 'is_default', label: 'Default', thClass: 'text-start', tdClass: 'text-start' , sortable: true},
+  { key: 'actions', label: 'Actions', thClass: 'text-center', tdClass: 'text-center' },
+]
+
+const fetchItems = async () => {
+  loading.value = true
+  try {
+    const response = await axios.get('/api/productbrand/')
+    brands.value = response.data
+  } catch (error) {
+    console.error('Error loading brands:', error)
+    proxy?.notifyError?.('Error loading product brands.')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchItems)
+
+const filteredItems = computed(() => {
+  if (!search.value) return brands.value
+  const q = search.value.toLowerCase()
+  return brands.value.filter(item =>
+    item.name.toLowerCase().includes(q)
+  )
+})
+
+const goToCreateForm = () => {
+  router.push({ name: 'product-brand-form' })
+}
+
+const viewItem = (id) => {
+  router.push({ name: 'product-brand-view', params: { id } })
+}
+
+const editItem = (id) => {
+  router.push({ name: 'product-brand-edit', params: { id } })
+}
+
+const confirmDelete = (id) => {
+  proxy?.confirmDelete?.(
+    'Delete?',
+    'This will delete the product brand. This action cannot be undone.',
+    async () => {
+      await deleteItem(id)
     }
-  },
-  mounted() {
-    this.fetchItems()
-  },
-  methods: {
-    async fetchItems() {
-      this.isBusy = true
-      try {
-        const response = await axios.get('/api/productbrand/')
-        this.items = Array.isArray(response.data) ? response.data : []
-      } catch (error) {
-        console.error('Error loading brands:', error)
-        this.items = []
-      } finally {
-        this.isBusy = false
-      }
-    },
+  )
+}
 
-    onSortChanged(ctx) {
-      this.sortBy = ctx.sortBy
-      this.sortDesc = ctx.sortDesc
-      
-      // Apply sorting directly to items
-      this.items.sort((a, b) => {
-        let aVal = a[this.sortBy]
-        let bVal = b[this.sortBy]
-        
-        // Handle null/undefined values
-        if (aVal == null) aVal = ''
-        if (bVal == null) bVal = ''
-        
-        // Convert to string for comparison
-        aVal = String(aVal).toLowerCase()
-        bVal = String(bVal).toLowerCase()
-        
-        if (aVal < bVal) return this.sortDesc ? 1 : -1
-        if (aVal > bVal) return this.sortDesc ? -1 : 1
-        return 0
-      })
-    },
-
-    goToCreateForm() {
-      this.$router.push({ name: 'product-brand-form' })
-    },
-
-    viewItem(id) {
-      this.$router.push({ name: 'product-brand-view', params: { id } })
-    },
-
-    editItem(id) {
-      this.$router.push({ name: 'product-brand-edit', params: { id } })
-    },
-
-    async confirmDelete(id) {
-      const result = await Swal.fire({
-        title: 'Delete?',
-        text: 'This will delete the product brand. This action cannot be undone.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, delete',
-        cancelButtonText: 'Cancel',
-      })
-      if (!result.isConfirmed) return
-      await this.deleteItem(id)
-    },
-
-    async deleteItem(id) {
-      this.deletingId = id
-      try {
-        await axios.delete(`/api/productbrand/${id}/`)
-        
-        // Remove item from local array
-        this.items = this.items.filter(b => b.id !== id)
-        
-        // Show success message
-        if (this.notifyToastSuccess) {
-          this.notifyToastSuccess('The product brand has been deleted.')
-        }
-      } catch (error) {
-        console.error('Error deleting product brand:', error)
-        const { status } = error?.response || {}
-        
-        if (status === 403) {
-          await Swal.fire('Forbidden', 'You do not have permission for this action.', 'error')
-        } else {
-          await Swal.fire('Oops!', 'Error deleting the product brand.', 'error')
-        }
-      } finally {
-        this.deletingId = null
-      }
-    },
-  },
+const deleteItem = async (id) => {
+  deletingId.value = id
+  try {
+    await axios.delete(`/api/productbrand/${id}/`)
+    brands.value = brands.value.filter(b => b.id !== id)
+    proxy?.notifyToastSuccess?.('The product brand has been deleted.')
+  } catch (error) {
+    console.error('Error deleting product brand:', error)
+    proxy?.notifyError?.('Error deleting the product brand.')
+  } finally {
+    deletingId.value = null
+  }
 }
 </script>
 
 <style scoped>
-.table td { vertical-align: middle; }
-.badge.fs-6 { font-size: 0.875rem !important; padding: 0.5rem 0.75rem; }
-:deep(.b-table) { font-size: 0.9rem; }
-:deep(.b-table th) { background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; font-weight: 600; color: #495057; }
-:deep(.b-table td) { border-bottom: 1px solid #dee2e6; }
-:deep(.b-table tbody tr:hover) { background-color: #f8f9fa; }
-:deep(.b-pagination .page-link) { color: #007bff; border-color: #dee2e6; }
-:deep(.b-pagination .page-item.active .page-link) { background-color: #007bff; border-color: #007bff; }
-.spinner-border { width: 3rem; height: 3rem; }
-.btn-group-sm .btn { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
-.fa-tags { opacity: 0.3; }
-@media (max-width: 768px) {
-  .badge.fs-6 { font-size: 0.75rem !important; padding: 0.375rem 0.5rem; }
-  :deep(.b-table) { font-size: 0.8rem; }
-  .btn-group-sm .btn { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
-}
-.form-select-sm { font-size: 0.875rem; padding: 0.25rem 0.5rem; }
-.text-muted.small { font-size: 0.8rem; }
 </style>

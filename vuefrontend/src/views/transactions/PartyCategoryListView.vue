@@ -100,9 +100,9 @@
 
   const fields = [
     { key: 'id', label: 'ID', sortable: true },
-    { key: 'name', label: 'Name', sortable: true },
-    { key: 'description', label: 'Description', sortable: true },
-    { key: 'is_active', label: 'Status', thClass: 'text-center', tdClass: 'text-center' },
+    { key: 'name', label: 'Name', sortable: true, thClass: 'text-start', tdClass: 'text-start'},
+    { key: 'description', label: 'Description', sortable: true, thClass: 'text-start', tdClass: 'text-start'},
+    { key: 'is_active', label: 'Status', thClass: 'text-start', tdClass: 'text-start', sortable: true },
     { key: 'actions', label: 'Actions', thClass: 'text-center', tdClass: 'text-center' },
   ];
 

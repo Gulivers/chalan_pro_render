@@ -2,33 +2,74 @@
   <div class="container-fluid position-relative my-2">
     <h3 class="text-center text-warning mb-2">Transaction</h3>
     <div class="card shadow mb-2 mx-3">
-      <div class="card-header d-flex align-items-center justify-content-between">
-        <h6 class="mb-0 text-primary">{{ isEditMode ? 'Edit Transaction' : 'New Transaction' }}</h6>
-        <div class="d-flex align-items-center gap-3">
-          <!-- is_active switch -->
-          <div class="form-check form-switch m-0" v-tt="form.is_active ? 'Active transaction' : 'Voided (inactive) – it will be ignored in reports.'">
-            <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="form.is_active">
-            <label class="form-check-label" :class="{'text-danger': !form.is_active}" for="isActiveSwitch">
-              {{ form.is_active ? 'Active' : 'Voided' }}
-            </label>
+      <div class="card-header">
+        <!-- Desktop Layout -->
+        <div class="d-none d-md-flex align-items-center justify-content-between">
+          <h6 class="mb-0 text-primary">{{ isEditMode ? 'Edit Transaction' : 'New Transaction' }}</h6>
+          <div class="d-flex align-items-center gap-3">
+            <!-- is_active switch -->
+            <div class="form-check form-switch m-0" v-tt="form.is_active ? 'Active transaction' : 'Voided (inactive) – it will be ignored in reports.'">
+              <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitch" v-model="form.is_active">
+              <label class="form-check-label" :class="{'text-danger': !form.is_active}" for="isActiveSwitch">
+                {{ form.is_active ? 'Active' : 'Voided' }}
+              </label>
+            </div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-secondary" type="button" @click="goBack">
+                Back
+              </button>
+              <button 
+                v-if="!isEditMode" 
+                class="btn btn-success" 
+                type="button" 
+                :disabled="submitting" 
+                @click="handleSaveAndAddAnother">
+                <span v-if="!submitting">+ </span>
+                <span v-else class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                {{ submitting ? 'Saving...' : 'Save and Add Another' }}
+              </button>
+              <button class="btn btn-primary" type="button" :disabled="submitting" @click="handleSubmit">
+                <span v-if="!submitting">💾 </span>
+                <span v-else class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                {{ submitting ? 'Saving...' : 'Save' }}
+              </button>
+            </div>
           </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary" type="button" @click="goBack">
-              <i class="fas fa-arrow-left me-1"></i> Back
+        </div>
+        
+        <!-- Mobile Layout -->
+        <div class="d-md-none">
+          <!-- Title Row -->
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0 text-primary">{{ isEditMode ? 'Edit Transaction' : 'New Transaction' }}</h6>
+            <!-- is_active switch -->
+            <div class="form-check form-switch m-0" v-tt="form.is_active ? 'Active transaction' : 'Voided (inactive) – it will be ignored in reports.'">
+              <input class="form-check-input" type="checkbox" role="switch" id="isActiveSwitchMobile" v-model="form.is_active">
+              <label class="form-check-label small" :class="{'text-danger': !form.is_active}" for="isActiveSwitchMobile">
+                {{ form.is_active ? 'Active' : 'Voided' }}
+              </label>
+            </div>
+          </div>
+          
+          <!-- Button Row -->
+          <div class="d-flex gap-1 flex-wrap">
+            <button class="btn btn-outline-secondary btn-sm flex-fill" type="button" @click="goBack">
+              Back
             </button>
             <button 
               v-if="!isEditMode" 
-              class="btn btn-success" 
+              class="btn btn-success btn-sm flex-fill" 
               type="button" 
               :disabled="submitting" 
               @click="handleSaveAndAddAnother">
-              <i v-if="!submitting" class="fas fa-plus me-1"></i>
-              <i v-else class="fas fa-spinner fa-spin me-1"></i>
-              {{ submitting ? 'Saving...' : 'Save and Add Another' }}
+              <span v-if="!submitting">+ </span>
+              <span v-else class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              <span class="d-none d-sm-inline">{{ submitting ? 'Saving...' : 'Save & Add' }}</span>
+              <span class="d-sm-none">{{ submitting ? 'Saving...' : 'Add' }}</span>
             </button>
-            <button class="btn btn-primary" type="button" :disabled="submitting" @click="handleSubmit">
-              <i v-if="!submitting" class="fas fa-save me-1"></i>
-              <i v-else class="fas fa-spinner fa-spin me-1"></i>
+            <button class="btn btn-primary btn-sm flex-fill" type="button" :disabled="submitting" @click="handleSubmit">
+              <span v-if="!submitting">💾 </span>
+              <span v-else class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
               {{ submitting ? 'Saving...' : 'Save' }}
             </button>
           </div>
@@ -39,7 +80,7 @@
         <!-- Header: Document fields -->
         <div class="row g-3">
           <!-- Left Column: Document Type, Party, Work Account -->
-          <div class="col-md-6">
+          <div class="col-12 col-md-6">
             <div class="row g-3">
               <div class="col-12">
                 <DocumentTypeSelector 
@@ -66,9 +107,10 @@
           </div>
 
           <!-- Right Column: Date and Notes -->
-          <div class="col-md-6">
+          <div class="col-12 col-md-6">
             <div class="row g-2">
-              <div class="col-6">
+              <!-- Mobile: Stack favorites and date vertically, Desktop: Side by side -->
+              <div class="col-12 col-sm-6">
                 <label class="form-label d-flex gap-1">Add to favorites</label>
                 <div class="d-flex flex-column align-items-start">
                   <button
@@ -82,9 +124,9 @@
                   </button>
                 </div>
               </div>
-              <div class="col-6">
+              <div class="col-12 col-sm-6">
                 <label class="form-label d-flex align-items-center gap-2" for="dateInput">Date</label>
-                <input type="date" class="form-control " v-model="form.date" id="dateInput" />
+                <input type="date" class="form-control" v-model="form.date" id="dateInput" />
                 <div class="text-danger small" v-if="errors.date">{{ errors.date[0] }}</div>
               </div>
 
@@ -140,10 +182,10 @@
 
         <!-- Totals -->
         <div class="row mt-3">
-          <div class="col-md-6">&nbsp;</div>
-          <div class="col-md-6">
+          <div class="col-12 col-md-6 d-none d-md-block">&nbsp;</div>
+          <div class="col-12 col-md-6">
             <div class="card bg-light">
-              <div class="card-body">
+              <div class="card-body p-3">
                 <div class="d-flex justify-content-between">
                   <span class="fw-semibold">Discount Total</span>
                   <span>{{ currency(total_discount) }}</span>
@@ -1158,11 +1200,11 @@ async function handleSubmit() {
       
       errorMessage = `
         <div class="text-start">
-          <small class="mb-3"><i class="fas fa-exclamation-triangle text-warning me-2"></i>The following products have insufficient stock:</small>
+          <small class="mb-3">⚠️ The following products have insufficient stock:</small>
           ${stockErrorsHTML}
           <div class="mt-3 p-2 bg-light rounded">
             <small class="text-muted">
-              <i class="fas fa-info-circle me-1"></i>
+              ℹ️ 
               Solutions:<br>
               • Check inventory in other warehouses<br>
               • Adjust quantities to available stock<br>
@@ -1258,5 +1300,78 @@ onMounted(async () => {
   margin: 10px 0;
   border-radius: 4px;
   font-size: 12px;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .container-fluid {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  .card {
+    margin-left: 0.25rem !important;
+    margin-right: 0.25rem !important;
+  }
+  
+  .card-header {
+    padding: 0.75rem;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+  
+  /* Ensure buttons don't overflow on mobile */
+  .btn-sm {
+    font-size: 0.8rem;
+    padding: 0.375rem 0.5rem;
+  }
+  
+  /* Make form labels more compact */
+  .form-label {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Adjust input sizes for mobile */
+  .form-control {
+    font-size: 0.9rem;
+  }
+  
+  /* Ensure proper spacing for mobile */
+  .row.g-3 {
+    --bs-gutter-x: 1rem;
+    --bs-gutter-y: 0.75rem;
+  }
+  
+  /* Adjust gaps for mobile */
+  .d-flex.gap-1 > * + * {
+    margin-left: 0.25rem;
+  }
+  
+  .d-flex.gap-2 > * + * {
+    margin-left: 0.5rem;
+  }
+  
+  /* Make textarea more compact */
+  textarea.form-control {
+    resize: vertical;
+    min-height: 60px;
+  }
+}
+
+/* Tablet responsive adjustments */
+@media (max-width: 992px) and (min-width: 769px) {
+  .card {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+  }
+}
+
+/* Ensure spinner is properly sized */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
 }
 </style>

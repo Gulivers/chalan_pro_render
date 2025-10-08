@@ -1,21 +1,51 @@
 <template>
   <div class="card">
-    <div class="card-header d-flex align-items-center justify-content-between">
-      <div class="d-flex gap-2">
-          <button class="btn btn-outline-primary" type="button" @click="addLine">
-            <i class="bi bi-plus-lg me-1"></i>
-            Add Row
-          </button>
-          <button class="btn btn-outline-info" type="button" :disabled="!hasSelection" @click="duplicateSelected">
-            <i class="bi bi-files  me-1"></i>
-            Duplicate selected
-          </button>
-          <button class="btn btn-outline-danger" type="button" :disabled="!hasSelection" @click="removeSelected">
-            <i class="bi bi-trash  me-1"></i>
-            Delete selected
-          </button>
+    <div class="card-header">
+      <!-- Desktop Layout -->
+      <div class="d-none d-md-flex align-items-center justify-content-between">
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" type="button" @click="addLine">
+              <i class="bi bi-plus-lg me-1"></i>
+              Add Row
+            </button>
+            <button class="btn btn-outline-info" type="button" :disabled="!hasSelection" @click="duplicateSelected">
+              <i class="bi bi-files me-1"></i>
+              Duplicate selected
+            </button>
+            <button class="btn btn-outline-danger" type="button" :disabled="!hasSelection" @click="removeSelected">
+              <i class="bi bi-trash me-1"></i>
+              Delete selected
+            </button>
+        </div>
+        <div class="small text-muted">Rows: {{ linesLocal?.length || 0 }}</div>
       </div>
-      <div class="small text-muted">Rows: {{ linesLocal?.length || 0 }}</div>
+      
+      <!-- Mobile Layout -->
+      <div class="d-md-none">
+        <!-- Title Row -->
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="small text-muted">Rows: {{ linesLocal?.length || 0 }}</div>
+        </div>
+        
+        <!-- Button Row - Responsive -->
+        <div class="d-flex gap-1 flex-wrap">
+          <button class="btn btn-outline-primary btn-sm flex-fill" type="button" @click="addLine">
+            <i class="bi bi-plus-lg"></i>
+            <span class="d-none d-sm-inline ms-1">Add Row</span>
+            <span class="d-sm-none ms-1">Add</span>
+          </button>
+          <button class="btn btn-outline-info btn-sm flex-fill" type="button" :disabled="!hasSelection" @click="duplicateSelected">
+            <i class="bi bi-files"></i>
+            <span class="d-none d-sm-inline ms-1">Duplicate</span>
+            <span class="d-sm-none ms-1">Copy</span>
+          </button>
+          <button class="btn btn-outline-danger btn-sm flex-fill" type="button" :disabled="!hasSelection" @click="removeSelected">
+            <i class="bi bi-trash"></i>
+            <span class="d-none d-sm-inline ms-1">Delete</span>
+            <span class="d-sm-none ms-1">Del</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="table-responsive" style="max-height: 70vh; min-height: 400px">
@@ -569,7 +599,16 @@
     // Auto-fill fields from ProductPrice predeterminado
     if (option?.value) {
       try {
-        const { data } = await axios.get(`/api/products/${option.value}/default-price/`);
+        // Construir params con document_type_id si está disponible
+        const params = {};
+        if (props.documentTypeId) {
+          params.document_type_id = props.documentTypeId;
+          console.log('🔍 Fetching price with document_type_id:', props.documentTypeId);
+        }
+        
+        const { data } = await axios.get(`/api/products/${option.value}/default-price/`, { params });
+        
+        console.log('🔍 Received price data:', data);
         
         // Auto-fill Unit desde ProductPrice predeterminado
         if (data.unit) {
@@ -600,7 +639,8 @@
           unit_price: data.unit_price,
           price_type: data.price_type,
           brand: data.default_brand,
-          brands: r.brands
+          brands: r.brands,
+          document_type_used: props.documentTypeId
         });
         
       } catch (error) {
@@ -952,6 +992,33 @@
   .table td {
     padding: 0.35rem 0.45rem;
     font-size: 0.85rem;
+  }
+  
+  /* Mobile responsive adjustments for header buttons */
+  @media (max-width: 768px) {
+    .card-header {
+      padding: 0.75rem;
+    }
+    
+    .btn-sm {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.4rem;
+      min-width: auto;
+    }
+    
+    .btn-sm i {
+      font-size: 0.8rem;
+    }
+    
+    /* Ensure buttons don't overflow */
+    .d-flex.gap-1 > * + * {
+      margin-left: 0.25rem;
+    }
+    
+    .flex-fill {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
   }
 
   /* Reducir el tamaño de los dropdowns de vue-select */

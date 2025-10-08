@@ -45,7 +45,7 @@
 
     <!-- Modal -->
     <div class="modal fade" :id="modalId" tabindex="-1" :aria-labelledby="modalId + 'Label'" aria-hidden="true" ref="modal">
-      <div class="modal-dialog modal-lg">
+      <div class="modal-dialog modal-xl">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" :id="modalId + 'Label'">
@@ -132,7 +132,8 @@ async function loadOptions() {
     const list = Array.isArray(data) ? data : data?.results || []
     options.value = list.map(d => ({ 
       value: d.id, 
-      label: `${d.type_code} — ${d.description}` 
+      // label: `${d.type_code} — ${d.description}` 
+      label: d.description
     }))
   } catch (error) {
     console.error('Error loading document types:', error)

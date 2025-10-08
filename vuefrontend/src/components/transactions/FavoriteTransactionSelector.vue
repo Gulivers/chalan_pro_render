@@ -14,11 +14,16 @@
           :disabled="isEditMode"
           @click="toggleDropdown"
           :class="{ 'show': isDropdownOpen }">
-          <span v-if="selectedFavoriteName">
+          <span v-if="selectedFavoriteName" class="text-truncate">
             {{ selectedFavoriteName }}
           </span>
-          <span v-else class="text-muted">
-            {{ isEditMode ? 'Cannot import favorites in edit mode' : 'Select a favorite transaction to import...' }}
+          <span v-else class="text-muted text-truncate">
+            <span class="d-none d-sm-inline">
+              {{ isEditMode ? 'Cannot import favorites in edit mode' : 'Select a favorite transaction to import...' }}
+            </span>
+            <span class="d-sm-none">
+              {{ isEditMode ? 'Cannot import in edit mode' : 'Select favorite...' }}
+            </span>
           </span>
         </button>
         

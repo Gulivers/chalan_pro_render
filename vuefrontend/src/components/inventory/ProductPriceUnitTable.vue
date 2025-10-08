@@ -144,10 +144,10 @@
                 name="defaultRow"
                 class="form-check-input"
                 :checked="row.is_default"
-                :disabled="readonly"
+                :disabled="readonly || row.is_purchase"
                 @change="setDefault(index)"
                 v-tt
-                data-title="Marks the primary price row. One default is recommended." />
+                :data-title="row.is_purchase ? 'Default price is not available for purchase prices. Only sale prices can be marked as default.' : 'Marks the primary price row. One default is recommended.'" />
             </td>
 
             <!-- Dates -->

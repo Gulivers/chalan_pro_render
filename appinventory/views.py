@@ -27,7 +27,7 @@ from appinventory.models import (
     Product, Stock, Warehouse, ProductCategory,
     ProductBrand, UnitOfMeasure, UnitCategory, PriceType, InventoryMovement
     )
-from apptransactions.models import Document, DocumentLine
+from apptransactions.models import Document, DocumentLine, DocumentType
 # Serializers
 from appinventory.serializers import (
     WarehouseSerializer, ProductCategorySerializer, ProductBrandSerializer,
@@ -414,6 +414,7 @@ class ProductBrandsUpdateAPIView(APIView):
 class ProductDefaultPriceAPIView(APIView):
     """
     Endpoint para obtener el precio predeterminado de un producto
+    Soporta selección de precio según tipo de documento (compra/venta)
     """
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -422,6 +423,8 @@ class ProductDefaultPriceAPIView(APIView):
         try:
             # Permitir filtrar por brand_id si se especifica
             brand_id = request.query_params.get('brand_id')
+            # Nuevo: permitir filtrar por document_type_id
+            document_type_id = request.query_params.get('document_type_id')
             
             product = Product.objects.get(id=product_id)
             
@@ -439,8 +442,40 @@ class ProductDefaultPriceAPIView(APIView):
             # Usar la marca solicitada o la default
             brand_to_use = requested_brand or default_brand
             
-            # Buscar el precio predeterminado
-            default_price = product.prices.filter(is_default=True, is_active=True).first()
+            # Determinar qué precio usar según el tipo de documento
+            default_price = None
+            
+            if document_type_id:
+                try:
+                    doc_type = DocumentType.objects.get(id=document_type_id)
+                    
+                    if doc_type.is_purchase:
+                        # Para documentos de compra: tomar el primer precio marcado como Purchase
+                        default_price = product.prices.filter(
+                            is_purchase=True, 
+                            is_active=True
+                        ).order_by('id').first()
+                    elif doc_type.is_sales:
+                        # Para documentos de venta: tomar el precio marcado como default y sale
+                        default_price = product.prices.filter(
+                            is_sale=True,
+                            is_default=True, 
+                            is_active=True
+                        ).first()
+                        
+                        # Si no hay precio default de venta, tomar el primero de venta
+                        if not default_price:
+                            default_price = product.prices.filter(
+                                is_sale=True,
+                                is_active=True
+                            ).order_by('id').first()
+                except DocumentType.DoesNotExist:
+                    pass
+            
+            # Fallback: si no se especificó document_type o no se encontró precio específico
+            if not default_price:
+                # Buscar el precio predeterminado (is_default=True)
+                default_price = product.prices.filter(is_default=True, is_active=True).first()
             
             if not default_price:
                 # Si no hay precio predeterminado, tomar el primero disponible
