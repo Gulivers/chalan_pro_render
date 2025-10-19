@@ -81,6 +81,56 @@ class WorkAccountViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Asigna automáticamente el usuario actual al campo created_by"""
         serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path="sync-schedule-titles")
+    def sync_schedule_titles(self, request, pk=None):
+        """
+        Update all related Events and EventDrafts titles (and context fields)
+        from the current WorkAccount. Overwrites any customized titles.
+        Returns counts of updated records.
+        """
+        try:
+            work_account = self.get_object()
+
+            # Import here to avoid circular imports
+            from appschedule.models import Event, EventDraft
+
+            # Only non-absence items
+            events_qs = Event.objects.filter(work_account=work_account, is_absence=False)
+            drafts_qs = EventDraft.objects.filter(work_account=work_account, is_absence=False)
+
+            # Bulk update: keep context fields synced too
+            updated_event_count = events_qs.update(
+                title=(work_account.title or '').upper(),
+                builder=work_account.builder,
+                job=work_account.job,
+                house_model=work_account.house_model,
+                lot=work_account.lot,
+                address=work_account.address,
+            )
+
+            updated_draft_count = drafts_qs.update(
+                title=(work_account.title or '').upper(),
+                builder=work_account.builder,
+                job=work_account.job,
+                house_model=work_account.house_model,
+                lot=work_account.lot,
+                address=work_account.address,
+            )
+
+            return Response(
+                {
+                    "message": "Schedule titles synchronized successfully.",
+                    "updated_events": updated_event_count,
+                    "updated_drafts": updated_draft_count,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to synchronize schedule titles: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 # Documentos
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = (

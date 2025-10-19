@@ -18,6 +18,7 @@ class EventSerializer(serializers.ModelSerializer):
     crew_title = serializers.SerializerMethodField()
     crew_category = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
+    work_account_title = serializers.SerializerMethodField()
 
     def get_crew_title(self, obj):
         return obj.crew.name
@@ -26,6 +27,11 @@ class EventSerializer(serializers.ModelSerializer):
         if obj.crew and obj.crew.category:
             return obj.crew.category.name
         return None 
+    
+    def get_work_account_title(self, obj):
+        if obj.work_account:
+            return obj.work_account.title
+        return None
 
     def get_images(self, obj):
         images = obj.images.all()
@@ -76,9 +82,15 @@ class EventDraftSerializer(serializers.ModelSerializer):
     """Serializer for events draft objects"""
 
     crew_title = serializers.SerializerMethodField()
+    work_account_title = serializers.SerializerMethodField()
 
     def get_crew_title(self, obj):
         return obj.crew.name
+    
+    def get_work_account_title(self, obj):
+        if obj.work_account:
+            return obj.work_account.title
+        return None
 
     class Meta:
         model = EventDraft
@@ -102,10 +114,22 @@ class EventDraftSerializer(serializers.ModelSerializer):
         is_absence = data.get('is_absence', getattr(self.instance, 'is_absence', False))
         if is_absence:
             return data
+        
         # Tomar valores del instance si no están en data (caso PATCH parcial)
-        lot = data.get('lot', getattr(self.instance, 'lot', None))
-        address = data.get('address', getattr(self.instance, 'address', None))
-        job = data.get('job', getattr(self.instance, 'job', None))
+        work_account = data.get('work_account', getattr(self.instance, 'work_account', None))
+        
+        # Si viene work_account, extraer sus datos para la validación
+        # (los campos se sincronizarán automáticamente en el save() del modelo)
+        if work_account:
+            lot = work_account.lot
+            address = work_account.address
+            job = work_account.job
+        else:
+            # Fallback a campos individuales (compatibilidad con código legacy)
+            lot = data.get('lot', getattr(self.instance, 'lot', None))
+            address = data.get('address', getattr(self.instance, 'address', None))
+            job = data.get('job', getattr(self.instance, 'job', None))
+        
         crew = data.get('crew', getattr(self.instance, 'crew', None))
         event = data.get('event', getattr(self.instance, 'event', None))
         event_id = event.pk if event else None
@@ -121,9 +145,11 @@ class EventDraftSerializer(serializers.ModelSerializer):
             end_at = start_at + timedelta(days=1)
             data['end_dt'] = end_at
 
-        if not (lot or address or job):
-            raise ValidationError("Address or lot/job must be provided")
+        # Validar que se haya proporcionado work_account o al menos job/lot/address
+        if not work_account and not (lot or address or job):
+            raise ValidationError("Work Account or Address/Lot/Job must be provided")
 
+        # Validación de duplicados usando lot o address
         qs_ed = EventDraft.objects.filter(crew__category=category)
         qs_e = Event.objects.filter(crew__category=category, deleted=False)
 

@@ -842,22 +842,53 @@ async function loadDocument(id) {
     form.is_active = data.is_active
 
     // Normalize incoming lines
-    const normalizedLines = (data.lines || []).map(l => ({
-      __key: l.id || cryptoRandom(),
-      id: l.id,
-      selected: false,
-      product: typeof l.product === 'object' ? l.product?.id : l.product,
-      product_label: l.product_name || '',
-      quantity: l.quantity,
-      unit: typeof l.unit === 'object' ? l.unit?.id : l.unit,
-      unit_price: l.unit_price,
-      discount_percentage: l.discount_percentage,
-      final_price: l.final_price,
-      warehouse: typeof l.warehouse === 'object' ? l.warehouse?.id : l.warehouse,
-      price_type: typeof l.price_type === 'object' ? l.price_type?.id : l.price_type,
-      brand: typeof l.brand === 'object' ? l.brand?.id : l.brand,
-      _errors: {},
-    }))
+    const normalizedLines = (data.lines || []).map(l => {
+      // Función helper para extraer ID de un valor (puede ser objeto o ID)
+      function extractId(value) {
+        if (value === null || value === undefined) return null
+        if (typeof value === 'object' && value !== null) {
+          return value.id || null
+        }
+        return value
+      }
+      
+      const normalizedLine = {
+        __key: l.id || cryptoRandom(),
+        id: l.id,
+        selected: false,
+        product: extractId(l.product),
+        product_label: l.product_name || '',
+        quantity: l.quantity,
+        unit: extractId(l.unit),
+        unit_price: l.unit_price,
+        discount_percentage: l.discount_percentage,
+        final_price: l.final_price,
+        warehouse: extractId(l.warehouse),
+        price_type: extractId(l.price_type),
+        brand: extractId(l.brand),
+        _errors: {},
+      }
+      
+      // 🔍 DEBUG: Log de la línea cargada
+      console.log('🔍 Frontend: Línea cargada desde API:', {
+        original: {
+          product: l.product,
+          unit: l.unit,
+          warehouse: l.warehouse,
+          price_type: l.price_type,
+          brand: l.brand
+        },
+        normalized: {
+          product: normalizedLine.product,
+          unit: normalizedLine.unit,
+          warehouse: normalizedLine.warehouse,
+          price_type: normalizedLine.price_type,
+          brand: normalizedLine.brand
+        }
+      })
+      
+      return normalizedLine
+    })
     
     // If no lines exist, add one empty line
     if (normalizedLines.length === 0) {
@@ -903,6 +934,15 @@ function normalizePayload() {
     builderToSend = null // El backend lo resolverá desde work_account
   }
   
+  // Función helper para extraer ID de un valor (puede ser objeto o ID)
+  function extractId(value) {
+    if (value === null || value === undefined) return null
+    if (typeof value === 'object' && value !== null) {
+      return value.id || null
+    }
+    return value
+  }
+  
   return {
     document_type: form.document_type,
     builder: builderToSend,
@@ -912,17 +952,39 @@ function normalizePayload() {
     is_active: form.is_active,
     lines: lines.value
       .filter(l => l.product) // Solo enviar líneas que tengan producto
-      .map(l => ({
-        id: l.id,
-        product: typeof l.product === 'object' ? l.product?.id : l.product,
-        quantity: Number(l.quantity || 0),
-        unit: typeof l.unit === 'object' ? l.unit?.id : l.unit,
-        unit_price: Number(l.unit_price || 0),
-        discount_percentage: Number(l.discount_percentage || 0),
-        warehouse: typeof l.warehouse === 'object' ? l.warehouse?.id : l.warehouse,
-        price_type: typeof l.price_type === 'object' ? l.price_type?.id : l.price_type,
-        brand: typeof l.brand === 'object' ? l.brand?.id : l.brand,
-      }))
+      .map(l => {
+        const normalizedLine = {
+          id: l.id,
+          product: extractId(l.product),
+          quantity: Number(l.quantity || 0),
+          unit: extractId(l.unit),
+          unit_price: Number(l.unit_price || 0),
+          discount_percentage: Number(l.discount_percentage || 0),
+          warehouse: extractId(l.warehouse),
+          price_type: extractId(l.price_type),
+          brand: extractId(l.brand),
+        }
+        
+        // 🔍 DEBUG: Log de la línea normalizada
+        console.log('🔍 Frontend: Línea normalizada:', {
+          original: {
+            product: l.product,
+            unit: l.unit,
+            warehouse: l.warehouse,
+            price_type: l.price_type,
+            brand: l.brand
+          },
+          normalized: {
+            product: normalizedLine.product,
+            unit: normalizedLine.unit,
+            warehouse: normalizedLine.warehouse,
+            price_type: normalizedLine.price_type,
+            brand: normalizedLine.brand
+          }
+        })
+        
+        return normalizedLine
+      })
   }
 }
 
@@ -932,18 +994,26 @@ function clearErrors() {
 }
 
 function applyServerErrors(errData) {
+  console.log('🔍 Frontend: applyServerErrors called with:', errData)
+  
   // High-level document errors
   for (const k in errData) {
     if (k !== 'lines') errors[k] = errData[k]
   }
+  
   // Per-line errors (DRF returns a list aligned with sent indexes)
   if (Array.isArray(errData.lines)) {
+    console.log('🔍 Frontend: Processing line errors:', errData.lines)
     errData.lines.forEach((item, idx) => {
       if (!item) return
       const target = lines.value[idx]
       if (!target) return
+      
+      console.log(`🔍 Frontend: Applying errors to line ${idx}:`, item)
       target._errors = { ...(item || {}) }
     })
+  } else {
+    console.log('🔍 Frontend: errData.lines is not an array:', errData.lines)
   }
 }
 

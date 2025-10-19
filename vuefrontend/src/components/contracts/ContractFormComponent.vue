@@ -59,7 +59,19 @@
                           </div>
 
                           <!-- Selector para Builder -->
+                          <!-- Work Account selector -->
                           <div class="form-group row align-items-center mb-3">
+                              <label class="col-12 col-sm-4 col-form-label text-start text-sm-end">Work Account</label>
+                              <div class="col-sm-8">
+                                  <WorkAccountSelector
+                                      v-model="newContract.work_account"
+                                      @change="onWorkAccountChanged"
+                                  />
+                              </div>
+                          </div>
+
+                          <!-- Selector para Builder (hidden - replaced by WorkAccountSelector) -->
+                          <div class="form-group row align-items-center mb-3" v-if="false">
                               <label for="builder-select"
                                   class="col-12 col-sm-4 col-form-label text-start text-sm-end">Builder</label>
                               <!-- If user has permission to add or edit builder -->
@@ -96,8 +108,8 @@
                               </div>
                           </div>
 
-                          <!-- Selector for Job (Community) -->
-                          <div class="form-group row align-items-center mb-3">
+                          <!-- Selector for Job (hidden - replaced by WorkAccountSelector) -->
+                          <div class="form-group row align-items-center mb-3" v-if="false">
                               <label for="job-select"
                                   class="col-12 col-sm-4 col-form-label text-start text-sm-end">Job</label>
                               <!-- If user has permission to add or edit Job -->
@@ -132,8 +144,8 @@
                               </div>
                           </div>
 
-                          <!-- Selector for House Model -->
-                          <div class="form-group row align-items-center mb-3">
+                          <!-- Selector for House Model (hidden - replaced by WorkAccountSelector) -->
+                          <div class="form-group row align-items-center mb-3" v-if="true">
                               <label for="houseModel"
                                   class="col-12 col-sm-4 col-form-label text-start text-sm-end">House Model</label>
                               <!-- If user has permission to add or edit Job -->
@@ -263,7 +275,7 @@
                   <div class="row justify-content-center align-items-center">
                       <div class="col-12 col-sm-auto">
                           <div class="mb-6" v-if="$route.path == '/contract-form'">
-                              <div class="form-group row align-items-center" v-if="newContract.builder">
+                              <div class="form-group row align-items-center" v-if="newContract.work_account || newContract.builder">
                                   <div class="col col-sm-2">
                                       <label>Qty</label>
                                   </div>
@@ -274,7 +286,7 @@
                                       <label>Amount</label>
                                   </div>
                               </div>
-                              <div v-if="newContract.builder">
+                              <div v-if="newContract.work_account || newContract.builder">
                                   <div v-for="(price, index) in workPrices" :key="index">
                                       <div class="form-group row align-items-center">
                                           <div class="col col-sm-2"
@@ -402,6 +414,7 @@ import BuilderModal from './BuilderModalComponent.vue';
 import JobModal from './JobModalComponent.vue';
 import HouseModelModal from './HouseModelModalComponent.vue';
 import { openPdf } from "@helpers";
+import WorkAccountSelector from '@/components/transactions/WorkAccountSelector.vue'
 
 
 export default {
@@ -410,7 +423,8 @@ export default {
       BuilderModal,
       JobModal,
       HouseModelModal,
-      VSelect
+      VSelect,
+      WorkAccountSelector
 
   },
 
@@ -431,6 +445,7 @@ export default {
               last_updated: '',
               type: 'Rough',
               doc_type: 'Contract',
+              work_account: null,
               house_model: '',
               builder: '',
               job: '',
@@ -591,6 +606,53 @@ export default {
       selectText(event) {
           const input = event.target;
           input.select();
+      },
+
+      async onWorkAccountChanged(workAccountId) {
+          try {
+              if (!workAccountId) return
+              const { data } = await axios.get(`/api/work-accounts/${workAccountId}/`)
+
+              // 1) Builder primero (limpia dependencias por watchers)
+              this.newContract.builder = data.builder || null
+
+              // 2) Cargar jobs y setear job
+              await this.fetchJobs(() => {
+                  this.newContract.job = data.job || null
+              })
+
+              // 3) Cargar house models y setear house_model
+              await this.fetchHouseModels(async () => {
+                  // Si el house_model viene en el WA, asegúralo en opciones
+                  if (data.house_model) {
+                      // Confirmar que el house_model pertenece al job actual
+                      const hmId = data.house_model
+                      const exists = this.houseModels.some(h => h.id === hmId)
+                      if (!exists) {
+                          // fallback: recargar por si no estaba la relación aún en memoria
+                          await this.fetchHouseModels()
+                      }
+                      this.newContract.house_model = hmId
+                  } else {
+                      this.newContract.house_model = null
+                  }
+              })
+
+              // 4) Lote y Dirección
+              this.newContract.lot = data.lot || ''
+              this.newContract.address = data.address || ''
+
+              // 5) Recalcular precios (travel desde builder)
+              this.updateTravelPrice()
+              this.calculatePrice()
+
+              // 6) Cargar precios de opciones según builder
+              if (data.builder) {
+                  await this.fetchWorkPrices(data.builder)
+              }
+          } catch (e) {
+              console.error('Error syncing WorkAccount into contract:', e)
+          }
       },
 
       // Move to the next input field when Enter is pressed
@@ -860,6 +922,7 @@ export default {
                           last_updated: editData.last_updated,
                           type: editData.type,
                           doc_type: editData.doc_type,
+                          work_account: editData.work_account || null,
                           builder: editData.builder.id,
                           builder_id: editData.builder.id,
                           job: editData.job.id,

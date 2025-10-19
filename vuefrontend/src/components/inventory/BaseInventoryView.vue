@@ -1,4 +1,32 @@
 <template>
+  <!--
+    BaseInventoryView.vue
+    --------------------------------------------------------------
+    ¿Qué es?
+      - Componente base reutilizable para listar catálogos del módulo Inventory
+        usando una tabla con DataTables (a través del mixin dataTableMixin).
+
+    ¿Qué hace?
+      - Carga un esquema (schemaEndpoint) para construir dinámicamente las columnas.
+      - Obtiene los datos (apiEndpoint) y renderiza la tabla.
+      - Inicializa/gestiona DataTables de forma segura con el mixin.
+      - Expone acciones comunes (View/Edit) mediante rutas pasadas por props.
+
+    ¿Quién lo usa?
+      - Vistas de inventario tipo catálogo, por ejemplo:
+          * WarehouseListView (almacenes)
+          * ProductCategoryView (categorías de producto)
+          * ProductBrandView (marcas)
+          * UnitOfMeasureView (unidades de medida)
+          * UnitCategoryView (categorías de unidades)
+      - Cualquier otra vista de tipo listado que provea schemaEndpoint y apiEndpoint.
+
+    Props clave:
+      - schemaEndpoint:   URL para obtener metadatos de columnas (labels, etc.)
+      - apiEndpoint:      URL para obtener los registros a listar
+      - createRouteName / viewRouteName / editRouteName: nombres de rutas para acciones
+      - tableId / tableRef: identificadores para inicializar DataTables de forma segura
+  -->
   <div class="card shadow mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h6 class="text-primary mb-0">{{ title }}</h6>

@@ -635,6 +635,38 @@
       // Emit saved event for modal usage
       emit('saved', savedData);
 
+      // Ask if user wants to sync schedule titles
+      const { isConfirmed } = await Swal.fire({
+        title: 'Update schedule titles?',
+        text: 'Do you want to propagate this title change to all related schedule events? This will overwrite customized titles.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, update',
+        cancelButtonText: 'No, keep as is'
+      })
+
+      if (isConfirmed) {
+        try {
+          const waId = isEditMode ? id : savedData?.id
+          if (waId) {
+            const syncResp = await axios.post(`/api/work-accounts/${waId}/sync-schedule-titles/`)
+            await Swal.fire({
+              icon: 'success',
+              title: 'Schedule Updated',
+              text: `Updated ${syncResp.data?.updated_events || 0} events and ${syncResp.data?.updated_drafts || 0} drafts.`,
+              timer: 2500,
+              showConfirmButton: false
+            })
+          }
+        } catch (e) {
+          await Swal.fire({
+            icon: 'error',
+            title: 'Sync Failed',
+            text: 'Could not synchronize schedule titles. You can try again later from Work Accounts.',
+          })
+        }
+      }
+
       // Éxito silencioso → Redirect por nombre (con fallback al path)
       goList();
     } catch (error) {

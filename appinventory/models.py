@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -181,68 +182,82 @@ class InventoryMovement(models.Model):
         return f"{self.get_movement_type_display()} - {self.product} ({self.quantity}) en {self.warehouse}"
 
     def get_converted_quantity(self):
-        print(f"🔍 get_converted_quantity() iniciado: self.quantity={self.quantity} (tipo: {type(self.quantity)})")
         result = convert_to_reference_unit(self.product, self.unit, self.quantity)
-        print(f"🔍 get_converted_quantity() resultado: {result} (tipo: {type(result)})")
         return result
 
     def save(self, *args, **kwargs):
-        print(f"🔍 InventoryMovement.save() iniciado: quantity={self.quantity} (tipo: {type(self.quantity)})")
+        """
+        Guarda el movimiento de inventario y actualiza el stock automáticamente.
         
+        Mejoras v2.0:
+        - Mantiene quantity como cantidad original (sin convertir)
+        - Usa cantidad convertida solo para actualizar el stock
+        - Evita el problema de doble conversión
+        """
         if not self.product or not self.warehouse:
-            raise ValueError("❌ No se puede guardar InventoryMovement sin producto o almacén.")
-
-        print(f"💾 Salvando movimiento: product={self.product}, quantity={self.quantity}, unit={self.unit}, warehouse={self.warehouse}")
+            raise ValueError("No se puede guardar InventoryMovement sin producto o almacén.")
 
         # Verificar que quantity no sea None antes de la conversión
         if self.quantity is None:
-            print("❌ ERROR: self.quantity es None antes de la conversión")
-            raise ValueError("❌ Quantity no puede ser None")
+            raise ValueError("Quantity no puede ser None")
 
-        # Calcular cantidad convertida
+        # Calcular cantidad convertida para actualizar el stock
+        # ⚠️ NO sobrescribir self.quantity - mantener la cantidad original
         try:
             converted_qty = self.get_converted_quantity() if self.unit else self.quantity
-            print(f"✅ Cantidad convertida: {converted_qty} (tipo: {type(converted_qty)})")
         except Exception as e:
-            print(f"❌ Error al convertir cantidad: {e}")
+            print(f"⚠️ Error en conversión, usando cantidad original: {e}")
             converted_qty = self.quantity
 
         if converted_qty is None:
-            print("❌ ERROR: converted_qty es None después de la conversión")
-            raise ValueError("🔥 Error: cantidad convertida terminó en None")
+            raise ValueError("Error: cantidad convertida terminó en None")
 
-        # Guardar la cantidad convertida en el mismo campo
-        self.quantity = converted_qty
-        print(f"✅ Quantity asignado: {self.quantity} (tipo: {type(self.quantity)})")
+        print(f"📦 Guardando movimiento: quantity={self.quantity}, converted={converted_qty} (tipo: {type(converted_qty)})")
 
-        # Guardar el movimiento
-        print(f"🏁 Guardando en DB → quantity={self.quantity} (tipo: {type(self.quantity)})")
-        
-        # Verificar que quantity no sea None justo antes de guardar
-        if self.quantity is None:
-            print("❌ ERROR CRÍTICO: self.quantity es None justo antes de guardar")
-            raise ValueError("❌ Quantity es None justo antes de guardar")
-        
+        # Guardar el movimiento en la base de datos
+        # Nota: self.quantity se mantiene como cantidad original
         try:
-            super().save(force_insert=not self.pk, *args, **kwargs)
+            is_new = not self.pk
+            super().save(*args, **kwargs)
             print(f"✅ InventoryMovement guardado exitosamente con ID: {self.id}")
         except Exception as e:
             print(f"❌ ERROR al guardar InventoryMovement: {e}")
-            print(f"🔍 Estado del objeto antes del error: quantity={self.quantity}, product={self.product}, warehouse={self.warehouse}")
             raise
 
-        # Ajustar el stock
-        stock, _ = Stock.objects.get_or_create(product=self.product, warehouse=self.warehouse)
+        # Ajustar el stock usando la cantidad convertida
+        stock, _ = Stock.objects.get_or_create(
+            product=self.product, 
+            warehouse=self.warehouse,
+            defaults={'quantity': Decimal('0.00')}
+        )
         old_qty = stock.quantity
-        stock.quantity += self.quantity * self.movement_type
+        
+        # Usar la cantidad convertida para actualizar el stock
+        stock.quantity += converted_qty * self.movement_type
         stock.save()
 
         print(f"📊 Stock actualizado: {old_qty} → {stock.quantity} (producto: {self.product}, almacén: {self.warehouse})")
 
     def delete(self, *args, **kwargs):
+        """
+        Elimina el movimiento de inventario y revierte su efecto en el stock.
+        """
         from .models import Stock
+        
+        # Calcular cantidad convertida
         converted_qty = self.get_converted_quantity()
-        stock, _ = Stock.objects.get_or_create(product=self.product, warehouse=self.warehouse)
+        
+        # Revertir el efecto en el stock
+        stock, _ = Stock.objects.get_or_create(
+            product=self.product, 
+            warehouse=self.warehouse,
+            defaults={'quantity': Decimal('0.00')}
+        )
+        old_qty = stock.quantity
         stock.quantity -= converted_qty * self.movement_type
         stock.save()
+        
+        print(f"🗑️ Movimiento eliminado - Stock revertido: {old_qty} → {stock.quantity} (producto: {self.product})")
+        
+        # Eliminar el movimiento
         super().delete(*args, **kwargs)

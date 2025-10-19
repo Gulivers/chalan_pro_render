@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8">Name a
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ document.document_type.type_code }} - {{ document.id }}</title>
 
@@ -248,12 +248,14 @@
         <thead>
             <tr>
                 <th style="width: 5%;">#</th>
-                <th style="width: 45%;">PRODUCT</th>
+                <th style="width: {% if document.document_type.type_code == 'SO-PACK' %}65%{% else %}45%{% endif %};">PRODUCT</th>
                 <th style="width: 10%;" class="text-center">QTY.</th>
-                <th style="width: 10%;" class="text-center">UNIT</th>
+                <th style="width: {% if document.document_type.type_code == 'SO-PACK' %}20%{% else %}10%{% endif %};" class="text-center">UNIT</th>
+                {% if document.document_type.type_code != 'SO-PACK' %}
                 <th style="width: 12%;" class="text-right">UNIT PRICE</th>
                 <th style="width: 8%;" class="text-center">DISC.%</th>
                 <th style="width: 10%;" class="text-right">SUBTOTAL</th>
+                {% endif %}
             </tr>
         </thead>
         <tbody>
@@ -273,15 +275,18 @@
                 </td>
                 <td class="text-center">{{ line.quantity }}</td>
                 <td class="text-center">{{ line.unit.code|default:"-" }}</td>
+                {% if document.document_type.type_code != 'SO-PACK' %}
                 <td class="text-right">${{ line.unit_price|floatformat:2 }}</td>
                 <td class="text-center">{{ line.discount_percentage|floatformat:1 }}%</td>
                 <td class="text-right">${{ line.final_price|floatformat:2 }}</td>
+                {% endif %}
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
     <!-- Totals Section -->
+    {% if document.document_type.type_code != 'SO-PACK' %}
     <div class="totals-section">
         <table class="totals-table">
             <tr>
@@ -300,6 +305,7 @@
             </tr>
         </table>
     </div>
+    {% endif %}
 
     <!-- Notes Section -->
     {% if document.notes %}
@@ -335,7 +341,9 @@
     <div class="footer-section">
         <div class="text-center">
             <p class="mb-0">Document generated on {{ "now"|date:"m/d/Y g:i:s A" }} - ChalanPro System</p>
+            {% if document.document_type.type_code != 'SO-PACK' %}
             <p class="mb-0">This document was generated electronically and does not require handwritten signature</p>
+            {% endif %}
         </div>
     </div>
 

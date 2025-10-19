@@ -246,25 +246,18 @@ class DocumentLine(models.Model):
     brand = models.ForeignKey(ProductBrand, on_delete=models.PROTECT, null=True, blank=True)  # Marca específica usada en esta línea, útil para trazabilidad
 
     def clean(self):
-        print(f"🧹 Backend: DocumentLine.clean() iniciado para: {self}")
         errors = {}
         if self.quantity is None:
             errors['quantity'] = 'La cantidad no puede estar vacía.'
-            print(f"❌ Backend: Error quantity: {self.quantity}")
         if self.product is None:
             errors['product'] = 'Debe seleccionar un producto.'
-            print(f"❌ Backend: Error product: {self.product}")
         # si el tipo de documento requiere almacén, la línea debe tener warehouse
         doc = getattr(self, "document", None)
         if doc and doc.document_type and doc.document_type.warehouse_required:
-            print(f"📋 Backend: Document type requiere warehouse: {doc.document_type.warehouse_required}")
             if not self.warehouse:
                 errors['warehouse'] = 'Este tipo de documento requiere almacén en cada línea.'
-                print(f"❌ Backend: Error warehouse: {self.warehouse}")
         if errors:
-            print(f"❌ Backend: DocumentLine.clean() falló con errores: {errors}")
             raise ValidationError(errors)
-        print("✅ Backend: DocumentLine.clean() exitoso")
         
     def save(self, *args, **kwargs):
         print(" 1 🧼 apptransactions\models.py -> DocumentLine: def save(self, *args, **kwargs).")

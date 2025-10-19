@@ -437,41 +437,6 @@
   .card {
     border: none;
   }
-  .bg-primary {
-    background-color: #007bff !important;
-  }
-  .bg-success {
-    background-color: #198754 !important;
-  }
-  .bg-secondary {
-    background-color: #6c757d !important;
-  }
-
-  /* Pagination styles */
-  .pagination .page-link {
-    color: #007bff;
-    border-color: #dee2e6;
-    padding: 0.375rem 0.75rem;
-  }
-
-  .pagination .page-item.active .page-link {
-    background-color: #007bff;
-    border-color: #007bff;
-    color: white;
-  }
-
-  .pagination .page-item.disabled .page-link {
-    color: #6c757d;
-    background-color: #fff;
-    border-color: #dee2e6;
-  }
-
-  .pagination .page-link:hover {
-    color: #0056b3;
-    background-color: #e9ecef;
-    border-color: #dee2e6;
-  }
-
   .form-select-sm {
     font-size: 0.75rem;
     padding: 0.2rem 0.4rem;
@@ -493,19 +458,5 @@
   .search-wrapper { 
     position: relative; 
   }
-  .btn-clear-x {
-    position: absolute; 
-    right: .5rem; 
-    top: 50%;
-    transform: translateY(-50%);
-    border: none; 
-    background: transparent; 
-    font-size: 1.25rem; 
-    line-height: 1;
-    color: #6c757d;
-    cursor: pointer;
-  }
-  .btn-clear-x:hover {
-    color: #495057;
-  }
+
 </style>

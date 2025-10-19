@@ -52,94 +52,13 @@
                       />
                     </div>
 
-                    <!-- Select Fields Builder-->
-                    <div v-if="!isAbsence">
-                      <label class="form-label">Builder</label>
-                      <div class="d-flex align-items-start gap-1 mb-2">
-                        <v-select
-                          :options="builders"
-                          v-model="localFormData.builder"
-                          :disabled="!isEditing"
-                          @change="resetJob"
-                          :reduce="builder => builder.id"
-                          label="name"
-                          placeholder="Select Builder"
-                          ref="builder"
-                          class="flex-grow-1"
-                          @keydown.enter="focusNext($event, 'job')"
-                          @focus="selectText"/>
-
-                          <AddBuilderButton 
-                            v-if="isEditing && this.hasPermission('ctrctsapp.add_builder')" 
-                            @builder-added="reloadBuilders" />
-                          <EditBuilderButton
-                            v-if="isEditing && localFormData.builder && this.hasPermission('ctrctsapp.change_builder')"
-                            :builder="selectedBuilder"
-                            @builder-updated="onBuilderUpdated"/>
-                      </div>
-                      <!-- Select Fields Job -->
-                      <label class="form-label">Job (Community)</label>
-                      <div class="d-flex align-items-start gap-1">
-                        <v-select
-                          :options="filteredJobs"
-                          v-model="localFormData.job"
-                          :disabled="!isEditing"
-                          :reduce="job => job.id"
-                          label="name"
-                          class="flex-grow-1"
-                          placeholder="Select Job"
-                          ref="job"
-                          @keydown.enter="focusNext($event, 'houseModel')"
-                          @focus="selectText" />
-                        <AddJobButton
-                          v-if="isEditing && this.hasPermission('ctrctsapp.add_job')" 
-                          :builder-id="Number(localFormData.builder) || null"
-                          :builders="builders"
-                          @job-added="reloadJobs"/>
-                        <EditJobButton
-                          v-if="isEditing && localFormData.job && this.hasPermission('ctrctsapp.change_job')"
-                          :job="selectedJob"
-                          :builders="builders"
-                          @job-updated="reloadJobs"/>
-                      </div>
-                      <!-- Select Fields House Model-->
-                      <label class="form-label">House Model (Optional)</label>
-                      <div class="d-flex align-items-start gap-1">
-                          <v-select
-                            :options="filteredHouses"
-                            v-model="localFormData.house_model"
-                            :disabled="!isEditing"
-                            :reduce="houseModel => houseModel.id"
-                            label="name"
-                            placeholder="Select House Model"
-                            ref="houseModel"
-                            class="flex-grow-1"
-                            @keydown.enter="focusNext($event, 'lot')"
-                            @focus="selectText"/>
-                          <AddHouseModelButton
-                            v-if="isEditing && this.hasPermission('ctrctsapp.add_housemodel')"
-                            :job-id="localFormData.job"
-                            :builder-id="localFormData.builder"
-                            @housemodel-added="reloadHouseModels"/>
-                          <EditHouseModelButton
-                            v-if="isEditing && localFormData.house_model && this.hasPermission('ctrctsapp.change_housemodel')"
-                            :house-model="selectedHouseModel"
-                            :builder-id="localFormData.builder"
-                            @housemodel-updated="reloadHouseModels"
-                          />
-                        </div>
-
-                      <!-- Text Fields -->
-                      <div class="mb-3">
-                        <label class="form-label">Lot</label>
-                        <input type="text" ref="lot" class="form-control" v-model="localFormData.lot"
-                              :readonly="!isEditing" placeholder="Enter lot number"/>
-                      </div>
-                      <div class="mb-3">
-                        <label class="form-label">Address</label>
-                        <input type="text" class="form-control" v-model="localFormData.address"
-                              :readonly="!isEditing" placeholder="Enter address"/>
-                      </div>
+                    <!-- Work Account Selector -->
+                    <div v-if="!isAbsence" class="mb-3">
+                      <WorkAccountSelector
+                        v-model="localFormData.work_account"
+                        :disabled="!isEditing"
+                        :required="!isAbsence"
+                      />
                     </div>
 
                     <div class="mb-3">
@@ -217,12 +136,7 @@ import axios from "axios";
 import Swal from 'sweetalert2';
 import dayjs from 'dayjs'
 import ScheduleHouseDiscussion from './ScheduleHouseDiscussion.vue';
-import AddBuilderButton from '@components/buttons/AddBuilderButton.vue'
-import EditBuilderButton from '@components/buttons/EditBuilderButton.vue'
-import AddJobButton from '@components/buttons/AddJobButton.vue'
-import EditJobButton from '@components/buttons/EditJobButton.vue'
-import AddHouseModelButton from '@components/buttons/AddHouseModelButton.vue'
-import EditHouseModelButton from '@components/buttons/EditHouseModelButton.vue'
+import WorkAccountSelector from '@components/transactions/WorkAccountSelector.vue';
 
 
 
@@ -231,24 +145,15 @@ export default {
   components: {
     VSelect,
     ScheduleHouseDiscussion,
-    AddBuilderButton,
-    EditBuilderButton,
-    AddJobButton,
-    EditJobButton,
-    AddHouseModelButton,
-    EditHouseModelButton
+    WorkAccountSelector
   },
   data() {
     return {
       localFormData: {
         id: null,
         crew: null,
-        builder: '',
-        job: '',
-        house_model: '',
-        lot: '',
+        work_account: null,
         title: '',
-        address: '',
         description: '',
         date: '',
         extended_service: false,
@@ -260,9 +165,6 @@ export default {
       titleManuallyEdited: false,
       is_draft: true,
       event_data: null,
-      builders: [],
-      jobs: [],
-      houses: [],
       websocket: null,
       wsUrl: null,
       old_event: null,
@@ -284,12 +186,6 @@ export default {
         this.localFormData.is_absence = value;
       }
     },
-    filteredJobs(){
-      return this.localFormData.builder ? this.jobs.filter((i) => this.localFormData.builder === i.builder) : []
-    },
-    filteredHouses(){
-      return this.localFormData.job ? this.houses.filter((i) => i.jobs.includes(this.localFormData.job)) : []
-    },
     canAccessEventActions() {
       // Si NO tiene permiso, fuera.
       if (!this.canCreateEvent && !this.isCoordinator) {
@@ -303,15 +199,6 @@ export default {
 
       // Tiene acceso.
       return true;
-    },
-    selectedBuilder() {
-      return this.builders.find(b => b.id === this.localFormData.builder)
-    },
-    selectedJob() {
-      return this.jobs.find(j => j.id === this.localFormData.job)
-    },
-    selectedHouseModel() {
-      return this.houses.find(h => h.id === this.localFormData.house_model)
     }
 
   },
@@ -319,28 +206,20 @@ export default {
     isAbsence(newVal) {
       if (newVal) {
         // Cuando se activó el modo ausencia
-        this.localFormData.builder = '';
-        this.localFormData.job = '';
-        this.localFormData.lot = '';
-        this.localFormData.address = '';
-        this.localFormData.house_model = '';
+        this.localFormData.work_account = null;
         this.localFormData.title = '';
       } else {
-        // SCuando se desactivó el modo ausencia
+        // Cuando se desactivó el modo ausencia
         this.localFormData.absence_reason = '';
         this.localFormData.title = '';
       }
     },
     'localFormData.absence_reason'(newVal) {
-    if (this.isAbsence && newVal && !this.titleManuallyEdited) {
-      this.autoFillTitle();
+      if (this.isAbsence && newVal && !this.titleManuallyEdited) {
+        this.autoFillTitle();
       }
-    // console.log("📜 Absence detected:", this.isAbsence)
-  },
-    'localFormData.job': ['autoFillTitle', 'resetHouse'],
-    'localFormData.lot': 'autoFillTitle',
-    'localFormData.address': 'autoFillTitle',
-    'localFormData.builder': 'resetJob',
+    },
+    'localFormData.work_account': 'autoFillTitle',
 
     canAccessEventActions(val) {
     console.debug('[CAA]', val, {
@@ -367,13 +246,8 @@ export default {
       }
     },
 
-    autoFillTitle() {
+    async autoFillTitle() {
       if (this.titleManuallyEdited) return;
-
-      const builder = this.localFormData.builder;
-      const job = this.localFormData.job;
-      const lot = this.localFormData.lot?.trim().toUpperCase();
-      const address = this.localFormData.address?.trim().toUpperCase();
 
       if (this.isAbsence) {
         const reason = this.absenceReasons.find(r => r.id === this.localFormData.absence_reason);
@@ -381,25 +255,16 @@ export default {
         return;
       }
 
-      // Evitar validación durante edición si los campos ya vienen listos
-      if ((lot || address) && (!builder || !job)) {
-        if (this.isEditing) {
-          this.notifyWarning('You must select both a Builder and a Job before entering Lot or Address.');
-        }
-        this.localFormData.title = '';
-        return;
-      }
-
-      const job_data = this.jobs.find(item => item.id === job);
-
-      if (job_data) {
-        const jobName = job_data.name.trim().toUpperCase();
-        if (lot) {
-          this.localFormData.title = `${jobName} ${lot}`;
-        } else if (address) {
-          this.localFormData.title = `${jobName} ${address}`;
-        } else {
-          this.localFormData.title = jobName;
+      // Si hay work_account, obtener su título
+      if (this.localFormData.work_account) {
+        try {
+          const response = await axios.get(`/api/work-accounts/${this.localFormData.work_account}/`);
+          if (response.status === 200 && response.data.title) {
+            this.localFormData.title = response.data.title.toUpperCase();
+          }
+        } catch (error) {
+          console.error('Error loading work account title:', error);
+          this.localFormData.title = '';
         }
       } else {
         this.localFormData.title = '';
@@ -418,24 +283,14 @@ export default {
         crew: eventData?.crew,
         date: eventData?.date,
         end_dt: eventData?.extendedProps?.end_dt || null,
-        builder: eventData?.builder || '',
-        job: eventData?.job || '',
-        house_model: eventData?.house_model || '',
-        lot: eventData?.lot || '',
+        work_account: eventData?.work_account || eventData?.extendedProps?.work_account || null,
         title: eventData?.title || '',
-        address: eventData?.address || '',
         description: eventData?.description || '',
         extended_service: eventData?.extended_service || false,
         is_absence: eventData?.isAbsence ?? eventData?.extendedProps?.is_absence ?? false,
         absence_reason: eventData?.absence_reason ?? eventData?.extendedProps?.absence_reason ?? null,
         _post: false,
       };
-      setTimeout(()=>{
-        this.localFormData.job = eventData?.job || '';
-      }, 100)
-      setTimeout(()=>{
-        this.localFormData.house_model = eventData?.house_model || '';
-      }, 200)
 
       this.crewTitle = eventData?.crewTitle;
       this.event_data = null
@@ -538,17 +393,8 @@ export default {
 
       // Validación preventiva (solo si no es una ausencia)
       if (!this.isAbsence) {
-        if (!this.localFormData.builder || !this.localFormData.job) {
-          Swal.fire('Missing Fields', 'Please select a Builder and Job before saving.', 'warning');
-          this.loading = false;
-          return;
-        }
-
-        const lotEmpty = !this.localFormData.lot?.trim();
-        const addressEmpty = !this.localFormData.address?.trim();
-
-        if (lotEmpty && addressEmpty) {
-          Swal.fire('Missing Fields', 'Please provide either Lot or Address.', 'warning');
+        if (!this.localFormData.work_account) {
+          Swal.fire('Missing Fields', 'Please select a Work Account before saving.', 'warning');
           this.loading = false;
           return;
         }
@@ -625,43 +471,6 @@ export default {
       );
     },
 
-    async getBuilders() {
-      try {
-        const response = await axios.get('/api/builders/');
-        if (response.status === 200) {
-          this.builders = response.data
-        }
-      } catch (error) {
-        console.error('Error fetching builders data:', error);
-      }
-    },
-    async getJobs() {
-      try {
-        const response = await axios.get('/api/jobs/');
-        if (response.status === 200) {
-          this.jobs = response.data
-        }
-      } catch (error) {
-        console.error('Error fetching builders data:', error);
-      }
-    },
-    async getHoses() {
-      try {
-        const response = await axios.get('/api/house_model/');
-        if (response.status === 200) {
-          this.houses = response.data
-        }
-      } catch (error) {
-        console.error('Error fetching house models data:', error);
-      }
-    },
-    resetJob(){
-      this.localFormData.job = ''
-      this.localFormData.house_model = ''
-    },
-    resetHouse(){
-      this.localFormData.house_model = ''
-    },
 
     async loadAbsenceReasons() {
       try {
@@ -675,85 +484,11 @@ export default {
     updateOnlineStatus() {
       // 'navigator.onLine' es una propiedad booleana que indica el estado de la conexión
       this.offLine = !navigator.onLine;
-    },
-    reloadBuilders({ builder, list }) {
-      this.builders = list;
-      if (builder?.id) {
-        this.localFormData.builder = builder.id;
-      }
-    },
-
-    onBuilderUpdated({ builder, list }) {
-      this.builders = list
-      if (builder?.id) {
-        this.localFormData.builder = builder.id
-      }
-    },
-
-    reloadJobs({ job, list }) {
-      this.jobs = list
-      if (job?.id) {
-        this.localFormData.job = job.id
-      }
-    },
-    async reloadHouseModels({ houseModel, list }) {
-      try {
-        // 1. Verificar que el nuevo house model pertenece al job seleccionado
-        if (houseModel?.id && this.localFormData.job) {
-          const belongsToCurrentJob = houseModel.jobs && houseModel.jobs.includes(this.localFormData.job);
-          
-          if (!belongsToCurrentJob) {
-            console.warn('El nuevo house model no pertenece al job seleccionado:', {
-              houseModelJobs: houseModel.jobs,
-              currentJob: this.localFormData.job
-            });
-            // No agregamos el house model si no pertenece al job actual
-            return;
-          }
-        }
-
-        // 2. Agregar solo el nuevo elemento en lugar de recargar toda la lista
-        if (houseModel?.id) {
-          // Verificar si ya existe en la lista
-          const existingIndex = this.houses.findIndex(h => h.id === houseModel.id);
-          
-          if (existingIndex === -1) {
-            // Agregar solo el nuevo elemento
-            this.houses.push(houseModel);
-            console.log('House model agregado dinámicamente:', houseModel);
-          } else {
-            // Actualizar el elemento existente si es necesario
-            this.houses[existingIndex] = houseModel;
-            console.log('House model actualizado:', houseModel);
-          }
-          
-          // 3. Seleccionar automáticamente el nuevo house model
-          this.localFormData.house_model = houseModel.id;
-        }
-        
-      } catch (error) {
-        console.error('Error en reloadHouseModels:', error);
-        // Fallback: recargar toda la lista si hay error
-        try {
-          const response = await axios.get('/api/house_model/');
-          if (response.status === 200) {
-            this.houses = response.data;
-            if (houseModel?.id) {
-              this.localFormData.house_model = houseModel.id;
-            }
-          }
-        } catch (fallbackError) {
-          console.error('Error en fallback de reloadHouseModels:', fallbackError);
-        }
-      }
     }
   },
 
   mounted() {
     this.offLine = !navigator.onLine;
-    this.getBuilders()
-    this.getJobs()
-    this.getHoses()
     this.loadAbsenceReasons()
 
     window.addEventListener('online', this.updateOnlineStatus);

@@ -411,19 +411,32 @@ class DocumentSerializer(serializers.ModelSerializer):
             all_line_errors = []
             for idx, ld in enumerate(lines_data):
                 line_id = ld.get("id")
+                
+                # Convertir objetos a IDs antes de validar la línea (igual que en create)
+                line_data = {
+                    'id': ld.get('id'),
+                    'product': ld.get('product').id if hasattr(ld.get('product'), 'id') else ld.get('product'),
+                    'quantity': ld.get('quantity'),
+                    'unit': ld.get('unit').id if hasattr(ld.get('unit'), 'id') else ld.get('unit'),
+                    'unit_price': ld.get('unit_price'),
+                    'discount_percentage': ld.get('discount_percentage'),
+                    'warehouse': ld.get('warehouse').id if hasattr(ld.get('warehouse'), 'id') else ld.get('warehouse'),
+                    'price_type': ld.get('price_type').id if hasattr(ld.get('price_type'), 'id') else ld.get('price_type'),
+                    'brand': ld.get('brand').id if hasattr(ld.get('brand'), 'id') else ld.get('brand'),
+                    'document': instance.id,  # Usar el ID del documento, no el objeto
+                }
+                
                 if line_id and line_id in existing:
                     # update
                     line = existing[line_id]
-                    ser = DocumentLineSerializer(line, data=ld, partial=True)
+                    ser = DocumentLineSerializer(line, data=line_data, partial=True)
                     if not ser.is_valid():
                         all_line_errors.append(ser.errors)
                     else:
                         all_line_errors.append({})
                 else:
-                    # create
-                    ld_copy = ld.copy()
-                    ld_copy["document"] = instance
-                    ser = DocumentLineSerializer(data=ld_copy)
+                    # create - el document ya está en line_data como ID
+                    ser = DocumentLineSerializer(data=line_data)
                     if not ser.is_valid():
                         all_line_errors.append(ser.errors)
                     else:
@@ -436,17 +449,31 @@ class DocumentSerializer(serializers.ModelSerializer):
             # Si todas las líneas son válidas, crear/actualizar todas las líneas
             for ld in lines_data:
                 line_id = ld.get("id")
+                
+                # Convertir objetos a IDs antes de crear/actualizar (igual que en create)
+                line_data = {
+                    'id': ld.get('id'),
+                    'product': ld.get('product').id if hasattr(ld.get('product'), 'id') else ld.get('product'),
+                    'quantity': ld.get('quantity'),
+                    'unit': ld.get('unit').id if hasattr(ld.get('unit'), 'id') else ld.get('unit'),
+                    'unit_price': ld.get('unit_price'),
+                    'discount_percentage': ld.get('discount_percentage'),
+                    'warehouse': ld.get('warehouse').id if hasattr(ld.get('warehouse'), 'id') else ld.get('warehouse'),
+                    'price_type': ld.get('price_type').id if hasattr(ld.get('price_type'), 'id') else ld.get('price_type'),
+                    'brand': ld.get('brand').id if hasattr(ld.get('brand'), 'id') else ld.get('brand'),
+                    'document': instance.id,  # Usar el ID del documento, no el objeto
+                }
+                
                 if line_id and line_id in existing:
                     # update
                     line = existing[line_id]
-                    ser = DocumentLineSerializer(line, data=ld, partial=True)
+                    ser = DocumentLineSerializer(line, data=line_data, partial=True)
                     ser.is_valid(raise_exception=True)
                     ser.save()
                     seen_ids.add(line_id)
                 else:
-                    # create
-                    ld["document"] = instance
-                    ser = DocumentLineSerializer(data=ld)
+                    # create - el document ya está en line_data como ID
+                    ser = DocumentLineSerializer(data=line_data)
                     ser.is_valid(raise_exception=True)
                     ser.save()
                     seen_ids.add(ser.instance.id)

@@ -31,13 +31,23 @@
           class="dropdown-menu w-100" 
           :class="{ 'show': isDropdownOpen }"
           @click.stop>
+           <!-- Buscador -->
+           <li class="px-2 pt-2" v-if="favoritesOptions.length > 0">
+             <input
+               type="text"
+               class="form-control form-control-sm"
+               v-model.trim="searchQuery"
+               ref="searchInputRef"
+               placeholder="Search favorite..." />
+           </li>
+           <li v-if="favoritesOptions.length > 0"><hr class="dropdown-divider" /></li>
           <li v-if="favoritesOptions.length === 0">
             <span class="dropdown-item-text text-muted">
               <i class="fas fa-info-circle me-2"></i>
               No favorites available
             </span>
           </li>
-          <li v-for="favorite in favoritesOptions" :key="favorite.id">
+           <li v-for="favorite in filteredFavorites" :key="favorite.id">
             <div class="dropdown-item d-flex justify-content-between align-items-center">
               <div class="flex-grow-1" @click="selectFavorite(favorite.id)">
                 <div class="fw-semibold">{{ favorite.display_name || favorite.name }}</div>
@@ -67,7 +77,7 @@
 </template>
 
 <script setup>
-  import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+  import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
   import axios from 'axios';
 
   const props = defineProps({
@@ -92,6 +102,8 @@
   const selectedFavorite = ref(props.modelValue);
   const selectedFavoriteName = ref('');
   const isDropdownOpen = ref(false);
+  const searchQuery = ref('');
+  const searchInputRef = ref(null);
 
   // Watcher para sincronizar con v-model
   watch(
@@ -170,6 +182,16 @@
   function toggleDropdown() {
     if (props.isEditMode) return;
     isDropdownOpen.value = !isDropdownOpen.value;
+    if (!isDropdownOpen.value) {
+      searchQuery.value = '';
+    }
+    if (isDropdownOpen.value) {
+      nextTick(() => {
+        if (searchInputRef.value) {
+          try { searchInputRef.value.focus(); } catch (e) {}
+        }
+      });
+    }
   }
 
   // Función para seleccionar un favorito
@@ -217,6 +239,18 @@
       emit('favorite-selected', null);
     }
   }
+
+  const filteredFavorites = computed(() => {
+    const q = (searchQuery.value || '').toLowerCase();
+    if (!q) return favoritesOptions.value;
+    return favoritesOptions.value.filter(fav => {
+      const name = String(fav.display_name || fav.name || '').toLowerCase();
+      const desc = String(fav.description || '').toLowerCase();
+      const doc  = String(fav.document_type_preview || '').toLowerCase();
+      const date = String(fav.created_at || '').toLowerCase();
+      return name.includes(q) || desc.includes(q) || doc.includes(q) || date.includes(q);
+    });
+  });
 
   function editFavorite(favorite) {
     // Cerrar dropdown

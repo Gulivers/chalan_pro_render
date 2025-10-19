@@ -15,7 +15,7 @@ const PasswordReset = () => import('@components/PasswordReset.vue');
 const PasswordResetConfirm = () => import('@components/PasswordResetConfirm.vue');
 
 // Contracts
-const ContractView = () => import('@views/contract/ContractView.vue');
+const ContractListView = () => import('@views/contract/ContractListView.vue');
 const ContractFormComponent = () => import('@components/contracts/ContractFormComponent.vue');
 const WorkPricesView = () => import('@views/contract/WorkPricesView.vue');
 const WorkPriceFormComponent = () => import('@components/contracts/WorkPriceFormComponent.vue');
@@ -119,7 +119,7 @@ const routes = [
   {
     path: '/contracts',
     name: 'contracts',
-    component: ContractView,
+    component: ContractListView,
     meta: { requiresAuth: true, requiredPermissions: ['ctrctsapp.view_contract'] }
   },
   {

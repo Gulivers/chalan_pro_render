@@ -29,6 +29,9 @@ class Event(models.Model):
     date = models.DateField()
     end_dt = models.DateField()
     crew = models.ForeignKey(Crew, on_delete=models.CASCADE, verbose_name='Crew')
+    # WorkAccount es el nuevo campo principal para identificar la obra
+    work_account = models.ForeignKey('apptransactions.WorkAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='events')
+    # Campos legacy mantenidos por compatibilidad (se sincronizan desde work_account)
     builder = models.ForeignKey(Builder, on_delete=models.CASCADE, related_query_name='events', blank=True, null=True)
     job = models.ForeignKey(Job, on_delete=models.SET_NULL, related_query_name='events', blank=True, null=True)
     house_model = models.ForeignKey(HouseModel, on_delete=models.SET_NULL, related_query_name='events', blank=True, null=True)
@@ -77,7 +80,19 @@ class Event(models.Model):
             raise ValidationError("Duplicate Event Detected")
 
     def save(self, *args, **kwargs):
-        self.title = self.title.upper()
+        # Sincronizar campos desde work_account si está presente
+        if self.work_account and not self.is_absence:
+            self.builder = self.work_account.builder
+            self.job = self.work_account.job
+            self.house_model = self.work_account.house_model
+            self.lot = self.work_account.lot
+            self.address = self.work_account.address
+            # Sincronizar título desde work_account.title si no es ausencia
+            if not self.title or not self.title.strip():
+                self.title = self.work_account.title
+        
+        if self.title:
+            self.title = self.title.upper()
         super().save(*args, **kwargs)
 
     class Meta:
@@ -91,6 +106,7 @@ class Event(models.Model):
         ]
         indexes = [
             models.Index(fields=['date', 'end_dt']),
+            models.Index(fields=['work_account', 'is_absence']),
         ]
         # ordering = ['-date', 'title']
         # Constraint está definido para PostgreSQL 😏
@@ -116,6 +132,9 @@ class EventDraft(models.Model):
     date = models.DateField()
     end_dt = models.DateField()
     crew = models.ForeignKey(Crew, on_delete=models.CASCADE, related_query_name='drafts')
+    # WorkAccount es el nuevo campo principal para identificar la obra
+    work_account = models.ForeignKey('apptransactions.WorkAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='event_drafts')
+    # Campos legacy mantenidos por compatibilidad (se sincronizan desde work_account)
     builder = models.ForeignKey(Builder, on_delete=models.CASCADE, related_query_name='drafts', blank=True, null=True)
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_query_name='drafts', blank=True, null=True)
     house_model = models.ForeignKey(HouseModel, on_delete=models.CASCADE, related_query_name='drafts', blank=True, null=True)
@@ -163,11 +182,26 @@ class EventDraft(models.Model):
         if qs_ed.exists() or qs_e.exists():
             raise ValidationError("Duplicate Event Detected")
 
+    def save(self, *args, **kwargs):
+        # Sincronizar campos desde work_account si está presente
+        if self.work_account and not self.is_absence:
+            self.builder = self.work_account.builder
+            self.job = self.work_account.job
+            self.house_model = self.work_account.house_model
+            self.lot = self.work_account.lot
+            self.address = self.work_account.address
+            # Sincronizar título desde work_account.title si no es ausencia
+            if not self.title or not self.title.strip():
+                self.title = self.work_account.title
+        
+        super().save(*args, **kwargs)
+
     class Meta:
         verbose_name = "Event Draft"
         verbose_name_plural = "Events Draft"
         indexes = [
             models.Index(fields=['date', 'end_dt']),
+            models.Index(fields=['work_account', 'is_absence']),
         ]
         # ordering = ['-date', 'title']
         # Constraint está definido para PostgreSQL 😏

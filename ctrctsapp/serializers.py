@@ -382,10 +382,38 @@ class HouseListSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'jobs']
 
 class ContractListSerializer(serializers.ModelSerializer):
-    builder = BuilderSerializer()
-    job = JobSerializer()
-    house_model = HouseModelSerializer()
+    builder = BuilderSerializer(allow_null=True)
+    job = JobSerializer(allow_null=True)
+    house_model = HouseModelSerializer(allow_null=True)
 
     class Meta:
         model = Contract
         fields = ['id', 'type', 'builder', 'job', 'house_model', 'lot', 'address', 'sqft', 'job_price', 'total_options', 'total', 'needs_reprint', 'doc_type', 'date_created']
+
+
+class ContractListLiteSerializer(serializers.ModelSerializer):
+    builder = serializers.SerializerMethodField()
+    job = serializers.SerializerMethodField()
+    house_model = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Contract
+        fields = ['id', 'type', 'builder', 'job', 'house_model', 'lot', 'address', 'sqft', 'job_price', 'total_options', 'total', 'needs_reprint', 'doc_type', 'date_created']
+
+    def get_builder(self, obj):
+        b = getattr(obj, 'builder', None)
+        if not b:
+            return None
+        return { 'id': b.id, 'name': b.name }
+
+    def get_job(self, obj):
+        j = getattr(obj, 'job', None)
+        if not j:
+            return None
+        return { 'id': j.id, 'name': j.name }
+
+    def get_house_model(self, obj):
+        h = getattr(obj, 'house_model', None)
+        if not h:
+            return None
+        return { 'id': h.id, 'name': h.name }

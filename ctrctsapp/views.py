@@ -18,7 +18,7 @@ from .serializers import (
     ContractSerializer, WorkPriceSerializer, ContractDetailsSerializer,
     BuilderSerializer, JobSerializer, HouseModelSerializer,
     JobFilteredByBuilderSerializer, HouseModelFilteredByJobSerializer,
-    BuilderListSerializer, JobListSerializer, HouseListSerializer, ContractListSerializer
+    BuilderListSerializer, JobListSerializer, HouseListSerializer, ContractListSerializer, ContractListLiteSerializer
 )
 from django.db.models import Sum, Count
 from django.db.models.functions import TruncWeek, TruncMonth
@@ -438,46 +438,73 @@ class ContractViewSet(viewsets.ModelViewSet):
 
     # Remplaza datatable_contracts sin Lazy Load
     # Lazy Load para DataTable de Contratos con filtros por supervisor
-    @action(detail=False, methods=['get'], url_path='datatable-contracts', permission_classes=[AllowAny])
-    def datatable_contracts(self, request):
-        """
-        Lazy load para DataTables filtrado por comunidades (jobs) del usuario.
-        a) Check if the user is in any crew.
-        b) If the user is part of a crew, filter contracts by user's jobs.
-        c) If el usuario no pertenece a crews, retorna todos los contratos.
-        """
-        user_id = request.GET.get('user_id')
-        if not user_id:
-            return Response({'error': 'user_id is required'}, status=400)
+    # Obsoleto: datatable-contracts eliminado en favor de contracts-provider
 
+    @action(detail=False, methods=['get'], url_path='contracts-provider', permission_classes=[AllowAny])
+    def contracts_provider(self, request):
+        """
+        Provider endpoint para BootstrapVue Next BTable (server-side):
+        - page, per_page, search, ordering
+        Devuelve: { items: [...], totalRows: N, stats: {...} }
+        """
         try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({'error': 'User not found'}, status=404)
+            page = int(request.GET.get('page', 1))
+            per_page = int(request.GET.get('per_page', 25))
+            search = request.GET.get('search', '').strip()
+            ordering = request.GET.get('ordering', '-id')
 
-        user_jobs = Job.objects.filter(crews__members=user)
-        if user_jobs.exists():
-            queryset = Contract.objects.filter(job__in=user_jobs)
-        else:
-            queryset = Contract.objects.all()
+            qs = Contract.objects.all().select_related('builder', 'job', 'house_model')
 
-        queryset = queryset.select_related('builder', 'job', 'house_model')
-        search_fields = [
-                            'id',
-                            'doc_type',
-                            'type',
-                            'date_created',
-                            'builder__name',
-                            'job__name',
-                            'house_model__name',
-                            'lot',
-                            'address',
-                            'sqft',
-                            'job_price',
-                            'total_options',
-                            'total',
-                        ]
-        return handle_datatable_query(request, queryset, ContractListSerializer, search_fields)   
+            if search:
+                from django.db.models import Q
+                words = search.split()
+                for w in words:
+                    q = (
+                        Q(id__icontains=w) |
+                        Q(doc_type__icontains=w) |
+                        Q(type__icontains=w) |
+                        Q(builder__name__icontains=w) |
+                        Q(job__name__icontains=w) |
+                        Q(house_model__name__icontains=w) |
+                        Q(lot__icontains=w) |
+                        Q(address__icontains=w)
+                    )
+                    qs = qs.filter(q)
+
+            # Ordering seguro
+            safe_order_fields = {
+                'id': 'id',
+                '-id': '-id',
+                'date_created': 'date_created',
+                '-date_created': '-date_created',
+                'total': 'total',
+                '-total': '-total',
+            }
+            qs = qs.order_by(safe_order_fields.get(ordering, '-id'))
+
+            total_rows = qs.count()
+            start = (page - 1) * per_page
+            end = start + per_page
+            page_qs = qs[start:end]
+
+            items = ContractListLiteSerializer(page_qs, many=True).data
+
+            # Opcional: estadísticas superiores
+            from django.db.models import Sum, Count
+            stats = {
+                'total': total_rows,
+                'active': total_rows,  # placeholder, ajustar si hay flag
+                'inactive': 0,
+            }
+
+            return Response({
+                'items': items,
+                'totalRows': total_rows,
+                'stats': stats,
+            })
+        except Exception as e:
+            logger.exception("contracts_provider error: %s", e)
+            return Response({'detail': str(e)}, status=500)
 
 class ContractDetailsViewSet(viewsets.ModelViewSet):
     queryset = ContractDetails.objects.all()
