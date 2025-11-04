@@ -32,3 +32,6 @@ services:
     publishPath: dist
     env: node
     autoDeploy: true
+    envVars:
+      - key: VUE_APP_API_BASE_URL
+        value: https://chalan-backend.onrender.com
