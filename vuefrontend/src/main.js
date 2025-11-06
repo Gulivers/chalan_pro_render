@@ -8,6 +8,12 @@ import router from './router';
 import { createPinia } from 'pinia';  // OAHP
 import store from './store';
 
+// jQuery y DataTables (deben estar antes de Bootstrap)
+import $ from 'jquery';
+import 'datatables.net'; // Solo JS, el CSS lo carga el CDN en index.html
+// Hacer jQuery disponible globalmente
+window.$ = window.jQuery = $;
+
 // Bootstrap (no es plugin de Vue)
 // Bootstrap CSS primero
 import 'bootstrap/dist/css/bootstrap.min.css';
