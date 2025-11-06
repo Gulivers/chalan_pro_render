@@ -32,6 +32,10 @@ services:
     publishPath: dist
     env: node
     autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VUE_APP_API_BASE_URL
         value: https://chalan-backend.onrender.com
