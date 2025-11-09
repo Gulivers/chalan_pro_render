@@ -66,8 +66,9 @@ const resolveApiBaseUrl = () => {
   }
 
   const { protocol, hostname, port } = window.location;
-  const devPorts = new Set(['', '3000', '3001', '8080', '8081', '5173', '5174']);
-  if (isLocalLikeHost(hostname) || devPorts.has(port)) {
+  const devPorts = new Set(['3000', '3001', '8080', '8081', '5173', '5174']);
+  const isDevPort = Boolean(port) && devPorts.has(port);
+  if (isLocalLikeHost(hostname) || isDevPort) {
     const apiPort = '8000';
     return ensureTrailingSlash(`${protocol}//${hostname}:${apiPort}`);
   }
