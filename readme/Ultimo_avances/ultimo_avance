@@ -23,3 +23,31 @@ Si aún hay 404, verifica que el archivo hosts tenga la entrada correcta y que e
 
 😜 Crea contenedor y schemas pero no los accede
 Se guardara este ambiente como punto de partida multi-tenant con contenedores independientes según PLAN_ESTRUCTURAL_MULTITENANT.md
+
+Rama creada
+Detalles del commit
+Rama: docker_Multi-tenant (rama actual)
+Commit: 6b58f2d
+Archivos modificados: 119 archivos
+Líneas agregadas: 16,521 inserciones
+Contenido guardado
+Implementación multi-tenant:
+appcore/views.py - Vista de creación de tenants con docker-py
+appcore/models.py - Modelos Tenant y Domain
+appcore/serializers.py - Serializadores para onboarding
+appcore/management/commands/preload_tenant_data.py - Comando de precarga de datos
+Scripts Docker:
+scripts/create-tenant.sh - Script Bash para creación de tenants
+scripts/create-tenant.ps1 - Script PowerShell para Windows
+scripts/ensure-shared-services.sh/.ps1 - Scripts para servicios compartidos
+Configuración Docker:
+docker-compose.local.yml - Configuración local con socket Docker
+docker-compose.multitenant.yml - Configuración multi-tenant
+Dockerfile - Actualizado con docker-cli
+Documentación:
+readme/tenant_readme/ - Documentación del sistema multi-tenant
+readme/LEVANTAR_SISTEMA_COMPLETO.md - Guía de levantamiento
+readme/URLS_ACCESO_CLIENTES.md - URLs de acceso
+Configuración de settings:
+project/settings/base.py - Configuración base multi-tenant
+project/settings/local.py - Settings locales actualizados
