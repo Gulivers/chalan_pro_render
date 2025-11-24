@@ -17,6 +17,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    networks:
+      - chalan-network
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -30,7 +32,10 @@ services:
     ports:
       - "5050:80"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - chalan-network
 
   backend:
     build:
@@ -40,15 +45,23 @@ services:
     env_file:
       - .env
     environment:
-      DJANGO_SETTINGS_MODULE: project.settings
+      DJANGO_SETTINGS_MODULE: project.settings.local
+      ENVIRONMENT: local
       SECRET_KEY: ${DJANGO_SECRET_KEY}
-      DEBUG: ${DJANGO_DEBUG}
+      USE_POWERSHELL: "true"  # Forzar uso de PowerShell en Windows para scripts Docker
+      HOST_OS: "Windows"  # Indicar que el host es Windows
+      DEBUG: ${DJANGO_DEBUG:-True}
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@chalan_postgres:5432/${POSTGRES_DB}
+      POSTGRES_HOST: chalan_postgres
       REDIS_URL: redis://redis:6379/0
       ENABLE_WEBSOCKET_NOTIFICATIONS: "True"
-    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "python manage.py migrate_schemas --schema=public && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
+      # Montar socket de Docker para permitir crear contenedores desde dentro del contenedor
+      # En Windows con Docker Desktop, usar: //var/run/docker.sock:/var/run/docker.sock
+      # En Linux/Mac, usar: /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8000:8000"
     depends_on:
@@ -56,6 +69,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    networks:
+      - chalan-network
 
   frontend:
     image: node:18-alpine
@@ -69,6 +84,8 @@ services:
       - "3000:3000"
     environment:
       - HOST=0.0.0.0
+    networks:
+      - chalan-network
 
   redis:
     image: redis:7.4-alpine
@@ -78,6 +95,12 @@ services:
       - "6379:6379"
     volumes:
       - chalan-redis-data:/data
+    networks:
+      - chalan-network
+
+networks:
+  chalan-network:
+    driver: bridge
 
 volumes:
   chalan-postgres-data:

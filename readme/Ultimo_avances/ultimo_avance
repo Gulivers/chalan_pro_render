@@ -1,0 +1,25 @@
+Las migraciones están aplicadas. 
+El problema es el uso del dominio correcto. 
+Resumen:
+Resumen del problema y solución
+Problema 1: Error 404 en API
+Causa: el frontend está accediendo a /api/*, pero Django no detecta el tenant porque el Host header no coincide.
+Solución: usar siempre http://globo-dyned.localhost/ (no localhost:8003).
+Problema 2: Admin muestra datos del schema público
+Causa: al acceder por localhost:8003, Django usa el schema public porque el Host header es localhost:8003, no globo-dyned.localhost.
+Solución: esto es esperado. Para ver el admin del tenant, usa http://globo-dyned.localhost/admin/.
+URLs correctas para Globo Dyne
+Frontend: http://globo-dyned.localhost/
+Admin del tenant: http://globo-dyned.localhost/admin/
+API del tenant: http://globo-dyned.localhost/api/
+URLs que muestran el schema público
+Admin público: http://localhost:8003/admin/ (muestra datos del schema public)
+Verificación
+Abre http://globo-dyned.localhost/ en el navegador.
+Intenta hacer login.
+Las llamadas a /api/* deberían funcionar porque el Host header será globo-dyned.localhost y Django detectará el tenant correctamente.
+Si aún hay 404, verifica que el archivo hosts tenga la entrada correcta y que el navegador esté usando ese dominio (no localhost:8003).
+¿Puedes probar accediendo por http://globo-dyned.localhost/ y confirmar si el problema persiste?
+
+😜 Crea contenedor y schemas pero no los accede
+Se guardara este ambiente como punto de partida multi-tenant con contenedores independientes según PLAN_ESTRUCTURAL_MULTITENANT.md

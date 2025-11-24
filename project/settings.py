@@ -8,12 +8,39 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
+
+NOTA: Este archivo mantiene compatibilidad hacia atrás.
+Para desarrollo local multi-tenant, usar project.settings.local
 """
 
-from corsheaders.defaults import default_headers
-from pathlib import Path
-from corsheaders.defaults import default_headers
+# Redirigir a settings.local si está disponible (para desarrollo local)
 import os
+environment = os.environ.get('ENVIRONMENT', '').lower()
+
+if environment == 'local' or (not environment and os.environ.get('DJANGO_SETTINGS_MODULE', '').endswith('.local')):
+    try:
+        from .settings.local import *
+    except ImportError:
+        # Si no existe settings.local, continuar con configuración antigua
+        pass
+elif environment == 'production':
+    try:
+        from .settings.production import *
+    except ImportError:
+        pass
+elif environment in ['qa', 'staging']:
+    try:
+        from .settings.qa import *
+    except ImportError:
+        pass
+
+# Si no se importó nada, continuar con configuración antigua
+try:
+    from corsheaders.defaults import default_headers
+except ImportError:
+    pass
+
+from pathlib import Path
 import logging 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

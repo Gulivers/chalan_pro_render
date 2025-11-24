@@ -28,7 +28,8 @@ RUN apk add --update \
     tk-dev \
     tcl-dev \
     fontconfig \
-    ttf-dejavu
+    ttf-dejavu \
+    docker-cli
 
 COPY ./requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip

@@ -37,10 +37,10 @@ module.exports = defineConfig({
   devServer: {
     host: '0.0.0.0',
     port: 3000,
-    allowedHosts: ['.192.168.0.248:3000'],
+    allowedHosts: ['all'], // Permite acceso desde cualquier host en desarrollo
     proxy: {
       '/api': {
-        target: 'http://192.168.0.248:3000',
+        target: 'http://192.168.0.248:8000', // Backend Django en puerto 8000
         changeOrigin: true,
         secure: false,
         // pathRewrite: { '^/api': '' },
